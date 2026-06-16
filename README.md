@@ -1,7 +1,7 @@
 # TP PoC Cryptographie — Sujet 12 : Analyse et exploitation d'une mauvaise gestion des JWT
 
-**Étudiant :** [Prénom NOM]  
-**Niveau :** M2 Développeur  
+**Étudiant :** [Jory GRZESZCZAK]  
+**Niveau :** M2 AL ESGI Grenoble 
 **Sujet :** 12 — Vulnérabilité JWT (difficulté : Normale)
 
 ---
