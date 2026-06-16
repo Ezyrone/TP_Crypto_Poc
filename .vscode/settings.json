@@ -3,6 +3,7 @@
         "project",
         "keys",
         "server",
-        "attack"
+        "attack",
+        "web"
     ]
 }
