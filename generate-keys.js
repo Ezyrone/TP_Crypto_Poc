@@ -1,10 +1,3 @@
-/**
- * Génère une paire de clés RSA-2048 pour les démonstrations JWT.
- * Les clés sont sauvegardées dans ./keys/ (non committées dans Git).
- *
- * Usage : node generate-keys.js
- */
-
 const crypto = require('crypto');
 const fs     = require('fs');
 const path   = require('path');
@@ -23,5 +16,5 @@ const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
 fs.writeFileSync(path.join(keysDir, 'private.pem'), privateKey);
 fs.writeFileSync(path.join(keysDir, 'public.pem'),  publicKey);
 
-console.log('✓ keys/private.pem  (GARDEZ SECRÈTE)');
-console.log('✓ keys/public.pem   (exposée par /api/public-key)');
+console.log('✓ keys/private.pem');
+console.log('✓ keys/public.pem');

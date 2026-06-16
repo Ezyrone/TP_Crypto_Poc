@@ -1,30 +1,3 @@
-/**
- * TP PoC Cryptographie — Sujet 12 : Vulnérabilités JWT
- * =====================================================
- * SERVEUR VULNÉRABLE (intentionnel, à des fins pédagogiques)
- *
- * Ce serveur expose délibérément 3 vulnérabilités JWT classiques :
- *
- *   VULN 1 — alg:none
- *     Le vérificateur accepte les tokens dont le header déclare
- *     "alg": "none", ce qui supprime toute vérification de signature.
- *     Un attaquant peut forger n'importe quel payload (y compris role:admin).
- *
- *   VULN 2 — Confusion RS256 / HS256
- *     L'endpoint /api/secret-rs256 utilise la clé publique RSA comme
- *     "clé" de vérification sans forcer l'algorithme. Si le token dit
- *     alg:HS256, la clé publique PEM est utilisée comme secret HMAC —
- *     ce qui est exploitable car la clé publique est exposée.
- *
- *   VULN 3 — Secret HS256 faible
- *     Le secret utilisé pour signer les tokens HS256 est "secret",
- *     un mot présent dans tous les dictionnaires (rockyou.txt...).
- *
- * Usage :
- *   node generate-keys.js   (une seule fois)
- *   node server.js
- */
-
 const express = require('express');
 const crypto  = require('crypto');
 const fs      = require('fs');
@@ -36,12 +9,8 @@ const PORT = 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'frontend')));
 
-// ─── CONFIGURATION VULNÉRABLE ────────────────────────────────────────────────
-
-// VULN 3 : secret intentionnellement faible, présent dans rockyou.txt
 const HS256_SECRET = 'secret';
 
-// Clés RSA pour VULN 2 (générées par generate-keys.js)
 let RSA_PUBLIC_KEY  = null;
 let RSA_PRIVATE_KEY = null;
 
@@ -53,13 +22,10 @@ try {
   console.warn('[WARN] L\'endpoint /api/secret-rs256 sera désactivé.');
 }
 
-// Base d'utilisateurs en mémoire
 const USERS = {
   alice: { password: 'password123', role: 'user'  },
   admin: { password: 'admin123',    role: 'admin' },
 };
-
-// ─── UTILITAIRES JWT (implémentation manuelle pour expliciter les vulnérabilités) ──
 
 function b64Encode(obj) {
   return Buffer.from(JSON.stringify(obj)).toString('base64url');
@@ -69,7 +35,6 @@ function b64Decode(str) {
   return JSON.parse(Buffer.from(str, 'base64url').toString('utf8'));
 }
 
-/** Crée un token JWT signé HS256 avec le secret faible. */
 function signHS256(payload) {
   const header = b64Encode({ alg: 'HS256', typ: 'JWT' });
   const body   = b64Encode(payload);
@@ -80,7 +45,6 @@ function signHS256(payload) {
   return `${header}.${body}.${sig}`;
 }
 
-/** Crée un token JWT signé RS256 avec la clé privée RSA. */
 function signRS256(payload) {
   if (!RSA_PRIVATE_KEY) throw new Error('Clés RSA non disponibles');
   const header = b64Encode({ alg: 'RS256', typ: 'JWT' });
@@ -91,12 +55,6 @@ function signRS256(payload) {
   return `${header}.${body}.${sig}`;
 }
 
-/**
- * VÉRIFICATION VULNÉRABLE — endpoint standard (VULN 1 : alg:none)
- *
- * Fait confiance à l'algorithme déclaré dans le header sans whitelist.
- * Un token avec "alg":"none" passe sans aucune vérification de signature.
- */
 function verifyVulnerable(token) {
   const parts = token.split('.');
   if (parts.length < 2) throw new Error('Token malformé');
@@ -105,7 +63,6 @@ function verifyVulnerable(token) {
   const payload = b64Decode(parts[1]);
   const sig     = parts[2] || '';
 
-  // ── VULN 1 : alg:none accepté sans vérification ──────────────────────────
   if (header.alg === 'none') {
     console.log('\x1b[31m[VULN 1] Token alg:none accepté — aucune signature vérifiée !\x1b[0m');
     return payload;
@@ -123,16 +80,6 @@ function verifyVulnerable(token) {
   throw new Error(`Algorithme non géré : ${header.alg}`);
 }
 
-/**
- * VÉRIFICATION VULNÉRABLE — endpoint RS256 (VULN 2 : confusion d'algorithme)
- *
- * Ce vérificateur utilise la clé publique RSA comme "clé" pour TOUS les
- * algorithmes — y compris HS256. C'est le comportement de certaines
- * bibliothèques JWT quand on leur passe une string PEM sans fixer l'algorithme.
- *
- * Conséquence : si un attaquant signe un token HS256 avec la clé publique RSA
- * comme secret HMAC (clé exposée par /api/public-key), la vérification réussit.
- */
 function verifyConfusionEndpoint(token) {
   if (!RSA_PUBLIC_KEY) throw new Error('Clés RSA non disponibles');
 
@@ -145,8 +92,6 @@ function verifyConfusionEndpoint(token) {
   const input   = `${parts[0]}.${parts[1]}`;
 
   if (header.alg === 'HS256') {
-    // ── VULN 2 : la clé publique RSA (PEM string) est utilisée comme
-    //    secret HMAC parce que le vérificateur ne force pas RS256.
     const expected = crypto
       .createHmac('sha256', RSA_PUBLIC_KEY)
       .update(input)
@@ -168,16 +113,12 @@ function verifyConfusionEndpoint(token) {
   throw new Error(`Algorithme non géré : ${header.alg}`);
 }
 
-// ─── MIDDLEWARE D'AUTHENTIFICATION ───────────────────────────────────────────
-
-/** Extrait le token Bearer du header Authorization. */
 function extractToken(req) {
   const auth = req.headers.authorization || '';
   if (!auth.startsWith('Bearer ')) throw new Error('Token manquant');
   return auth.slice(7);
 }
 
-/** Middleware : vérifie le token JWT (endpoint standard vulnérable). */
 function requireAuth(req, res, next) {
   try {
     req.user = verifyVulnerable(extractToken(req));
@@ -187,7 +128,6 @@ function requireAuth(req, res, next) {
   }
 }
 
-/** Middleware : vérifie le rôle admin. */
 function requireAdmin(req, res, next) {
   if (req.user?.role !== 'admin') {
     return res.status(403).json({ error: 'Rôle admin requis' });
@@ -195,9 +135,6 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// ─── ROUTES ──────────────────────────────────────────────────────────────────
-
-// Authentification — retourne un token HS256 (secret faible)
 app.post('/auth/login', (req, res) => {
   const { username, password } = req.body;
   const user = USERS[username];
@@ -208,7 +145,6 @@ app.post('/auth/login', (req, res) => {
   res.json({ token, note: 'Token HS256 signé avec un secret faible' });
 });
 
-// Authentification RS256 — retourne un token RS256 (pour VULN 2)
 app.post('/auth/login-rs256', (req, res) => {
   if (!RSA_PRIVATE_KEY) return res.status(503).json({ error: 'Clés RSA non disponibles' });
   const { username, password } = req.body;
@@ -220,27 +156,19 @@ app.post('/auth/login-rs256', (req, res) => {
   res.json({ token, note: 'Token RS256 signé avec la clé privée RSA' });
 });
 
-// Expose la clé publique RSA (nécessaire pour VULN 2)
 app.get('/api/public-key', (req, res) => {
   if (!RSA_PUBLIC_KEY) return res.status(503).json({ error: 'Clés RSA non disponibles' });
   res.type('text/plain').send(RSA_PUBLIC_KEY);
 });
 
-// Endpoint public — aucune authentification requise
 app.get('/api/public', (req, res) => {
   res.json({ message: 'Endpoint public — accessible sans token.' });
 });
 
-// Endpoint utilisateur — tout rôle authentifié
 app.get('/api/user', requireAuth, (req, res) => {
-  res.json({
-    message: 'Données utilisateur — token valide.',
-    user: req.user,
-  });
+  res.json({ message: 'Données utilisateur — token valide.', user: req.user });
 });
 
-// Endpoint admin — rôle admin requis
-// VULN 1 : accepte alg:none → un attaquant peut forger role:admin sans secret
 app.get('/api/admin', requireAuth, requireAdmin, (req, res) => {
   res.json({
     message: '🔑 Accès admin accordé — données confidentielles.',
@@ -249,7 +177,6 @@ app.get('/api/admin', requireAuth, requireAdmin, (req, res) => {
   });
 });
 
-// Endpoint RS256 vulnérable à la confusion d'algorithme (VULN 2)
 app.get('/api/secret-rs256', (req, res) => {
   try {
     const payload = verifyConfusionEndpoint(extractToken(req));
@@ -266,11 +193,8 @@ app.get('/api/secret-rs256', (req, res) => {
   }
 });
 
-// ─── DÉMARRAGE ───────────────────────────────────────────────────────────────
-
 app.listen(PORT, () => {
   console.log(`\n[SERVEUR VULNÉRABLE] http://localhost:${PORT}`);
-  console.log('Routes disponibles :');
   console.log('  POST /auth/login          → token HS256 (secret faible)');
   console.log('  POST /auth/login-rs256    → token RS256');
   console.log('  GET  /api/public          → public, sans auth');
@@ -278,7 +202,6 @@ app.listen(PORT, () => {
   console.log('  GET  /api/admin           → admin [VULN 1 : alg:none]');
   console.log('  GET  /api/public-key      → clé publique RSA');
   console.log('  GET  /api/secret-rs256    → RS256 [VULN 2 : confusion]');
-  console.log('\n  Vulnérabilités actives : alg:none | confusion RS256/HS256 | secret faible');
-  console.log('  Secret HS256 :', HS256_SECRET);
+  console.log(`\n  Secret HS256 : ${HS256_SECRET}`);
   console.log();
 });
