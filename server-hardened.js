@@ -131,7 +131,7 @@ app.post('/auth/login', (req, res) => {
 });
 
 app.post('/auth/logout', requireAuth, (req, res) => {
-  TOKEN_BLACKLIST.add(extractToken(req));
+  TOKEN_BLACKLIST.add(req.user.jti);
   res.json({ message: 'Token révoqué avec succès' });
 });
 
