@@ -40,7 +40,7 @@ function b64Decode(str) { return JSON.parse(Buffer.from(str, 'base64url').toStri
 function signHS256Hardened(payload) {
   const now    = Math.floor(Date.now() / 1000);
   const header = b64Encode({ alg: 'HS256', typ: 'JWT', kid: CURRENT_KID });
-  const body   = b64Encode({ ...payload, iat: now, exp: now + TOKEN_TTL_SECONDS });
+  const body   = b64Encode({ ...payload, jti: crypto.randomUUID(), iat: now, exp: now + TOKEN_TTL_SECONDS });
   const secret = KEY_STORE[CURRENT_KID];
   const sig    = crypto.createHmac('sha256', secret).update(`${header}.${body}`).digest('base64url');
   return `${header}.${body}.${sig}`;
@@ -70,7 +70,7 @@ function verifyHS256Hardened(token) {
 
   const now = Math.floor(Date.now() / 1000);
   if (payload.exp && payload.exp < now) throw new Error('Token expiré');
-  if (TOKEN_BLACKLIST.has(token))       throw new Error('Token révoqué');
+  if (TOKEN_BLACKLIST.has(payload.jti)) throw new Error('Token révoqué');
 
   return payload;
 }
