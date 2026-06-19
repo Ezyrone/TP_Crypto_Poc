@@ -105,7 +105,7 @@ Ce fichier constitue la version corrigée du serveur. Les modifications apporté
 - Liste noire de tokens révoqués (logout)
 - Support du champ `kid` pour la rotation de clés sans interruption de service
 
-> Ce fichier correspond à ce qui serait déployé depuis la branche `hardened` en production : `git checkout -b hardened`
+> Ce fichier constitue la version production-ready du serveur, corrigeant toutes les vulnérabilités démontrées.
 
 ---
 
