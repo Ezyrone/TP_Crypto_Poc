@@ -97,8 +97,9 @@ async function run() {
     process.stdout.write('\n');
   }
 
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(3);
-  const rate    = Math.round(tested / ((Date.now() - startTime) / 1000));
+  const elapsedMs = Date.now() - startTime;
+  const elapsed   = (elapsedMs / 1000).toFixed(3);
+  const rate      = elapsedMs > 0 ? Math.round(tested / (elapsedMs / 1000)) : tested;
 
   console.log(`\n    Mots testés : ${tested.toLocaleString()}`);
   console.log(`    Durée       : ${elapsed}s`);
