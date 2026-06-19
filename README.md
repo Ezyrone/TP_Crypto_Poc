@@ -169,13 +169,13 @@ D'après l'OWASP JWT Security Cheat Sheet et le Session Management Cheat Sheet :
 
 ```
 .
-├── server.js              # Serveur vulnérable (port 3000)
-├── server-hardened.js     # Serveur corrigé (port 3001 — branche "hardened")
-├── generate-keys.js       # Génération de la paire de clés RSA-2048
+├── server.js              
+├── server-hardened.js     
+├── generate-keys.js       
 ├── attacks/
 │   ├── 1_alg_none.js
 │   ├── 2_rs256_hs256.js
 │   └── 3_brute_force.js
 └── frontend/
-    └── index.html         # Interface de démonstration dans le navigateur
+    └── index.html        
 ```
