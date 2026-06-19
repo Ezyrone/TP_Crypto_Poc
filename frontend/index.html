@@ -5,28 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TP PoC — Vulnérabilités JWT</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
 
     :root {
-      --bg:        #060a0f;
-      --surface:   #0d1117;
-      --card:      #111820;
-      --border:    #1e2a37;
-      --border-hi: #2d404f;
-      --text:      #cdd6e0;
-      --muted:     #5a7080;
-      --accent:    #38bdf8;
-      --green:     #34d399;
-      --red:       #f87171;
-      --orange:    #fb923c;
-      --yellow:    #fbbf24;
-      --purple:    #a78bfa;
-      --mono:      'JetBrains Mono', monospace;
-      --sans:      'Inter', system-ui, sans-serif;
+      --bg:         #050a12;
+      --surface:    #0a1120;
+      --card:       #0d1528;
+      --card-glass: rgba(13, 21, 40, .75);
+      --border:     #152040;
+      --border-hi:  #1e3060;
+      --text:       #c8d6e5;
+      --muted:      #4a6580;
+      --accent:     #38bdf8;
+      --accent-dim: rgba(56,189,248,.12);
+      --green:      #34d399;
+      --red:        #f87171;
+      --orange:     #fb923c;
+      --yellow:     #fbbf24;
+      --purple:     #a78bfa;
+      --pink:       #f472b6;
+      --mono:       'JetBrains Mono', monospace;
+      --sans:       'Inter', system-ui, sans-serif;
+      --radius:     14px;
+      --radius-sm:  8px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     html { scroll-behavior: smooth; }
 
     body {
@@ -34,139 +38,218 @@
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      padding: 0 0 48px;
-      line-height: 1.5;
+      line-height: 1.55;
+      overflow-x: hidden;
     }
 
-    /* ── Scrollbar ── */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
-    /* ── Header ── */
+    /* ── Animated background ── */
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      background-image:
+        linear-gradient(rgba(56,189,248,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56,189,248,.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black 30%, transparent 100%);
+    }
+
+    .bg-glow {
+      position: fixed;
+      z-index: -1;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      animation: float 12s ease-in-out infinite alternate;
+    }
+
+    .bg-glow-1 { width: 500px; height: 500px; top: -100px; left: -100px; background: rgba(56,189,248,.06); }
+    .bg-glow-2 { width: 400px; height: 400px; bottom: 10%; right: -50px; background: rgba(167,139,250,.05); animation-delay: -4s; }
+    .bg-glow-3 { width: 350px; height: 350px; top: 40%; left: 30%; background: rgba(244,114,182,.04); animation-delay: -8s; }
+
+    @keyframes float {
+      0%   { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(30px, -40px) scale(1.15); }
+    }
+
+    /* ── Hero ── */
     .hero {
-      background: linear-gradient(135deg, #060d17 0%, #0b1829 60%, #060d17 100%);
-      border-bottom: 1px solid var(--border);
-      padding: 36px 32px 28px;
       position: relative;
+      padding: 52px 32px 44px;
       overflow: hidden;
     }
 
-    .hero::before {
+    .hero::after {
       content: '';
       position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse 60% 100% at 50% 0%, rgba(56,189,248,.08) 0%, transparent 70%);
-      pointer-events: none;
+      bottom: 0; left: 10%; right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-hi), transparent);
     }
 
-    .hero-inner { max-width: 1200px; margin: 0 auto; position: relative; }
+    .hero-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      position: relative;
+      animation: fadeSlideUp .8s cubic-bezier(.16,1,.3,1) both;
+    }
+
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
 
     .hero-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       font-family: var(--mono);
-      font-size: 0.7rem;
+      font-size: .68rem;
       color: var(--accent);
-      background: rgba(56,189,248,.08);
-      border: 1px solid rgba(56,189,248,.25);
-      border-radius: 20px;
-      padding: 4px 12px;
-      margin-bottom: 14px;
-      letter-spacing: .04em;
+      background: var(--accent-dim);
+      border: 1px solid rgba(56,189,248,.2);
+      border-radius: 100px;
+      padding: 5px 14px;
+      margin-bottom: 18px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
     }
 
-    .hero-badge::before {
-      content: '';
-      width: 6px; height: 6px;
+    .hero-badge .dot {
+      width: 7px; height: 7px;
       background: var(--accent);
       border-radius: 50%;
-      animation: pulse-dot 1.8s ease-in-out infinite;
+      box-shadow: 0 0 8px var(--accent);
+      animation: pulse-dot 2s ease-in-out infinite;
     }
 
     @keyframes pulse-dot {
       0%,100% { opacity: 1; transform: scale(1); }
-      50%      { opacity: .4; transform: scale(.7); }
+      50%     { opacity: .3; transform: scale(.6); }
     }
 
     h1 {
-      font-size: 1.9rem;
-      font-weight: 700;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-weight: 800;
       color: #fff;
-      letter-spacing: -.02em;
-      margin-bottom: 6px;
+      letter-spacing: -.03em;
+      line-height: 1.15;
+      margin-bottom: 10px;
     }
 
-    h1 span { color: var(--accent); }
+    h1 .gradient {
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
 
     .subtitle {
       color: var(--muted);
-      font-size: 0.88rem;
+      font-size: .9rem;
+      margin-bottom: 20px;
+    }
+
+    .hero-chips {
       display: flex;
-      align-items: center;
-      gap: 16px;
+      gap: 8px;
       flex-wrap: wrap;
     }
 
-    .subtitle-chip {
+    .hero-chip {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       font-family: var(--mono);
-      font-size: 0.72rem;
-      padding: 2px 8px;
-      border-radius: 4px;
-      background: rgba(255,255,255,.04);
-      border: 1px solid var(--border-hi);
+      font-size: .7rem;
+      padding: 5px 12px;
+      border-radius: 100px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
       color: var(--muted);
+      transition: all .3s;
     }
 
-    /* ── Main layout ── */
-    .wrapper {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 28px 24px 0;
-    }
+    .hero-chip:hover { border-color: var(--border-hi); background: rgba(255,255,255,.06); transform: translateY(-1px); }
 
-    .section-label {
+    /* ── Layout ── */
+    .wrapper { max-width: 1100px; margin: 0 auto; padding: 36px 20px 60px; }
+
+    .section-title {
       font-family: var(--mono);
-      font-size: 0.68rem;
+      font-size: .7rem;
       color: var(--muted);
-      letter-spacing: .1em;
+      letter-spacing: .12em;
       text-transform: uppercase;
-      margin-bottom: 12px;
-      padding-left: 2px;
+      margin-bottom: 16px;
+      padding-left: 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      margin-bottom: 14px;
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
     }
 
-    @media (max-width: 780px) { .grid { grid-template-columns: 1fr; } }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
 
     /* ── Cards ── */
     .card {
-      background: var(--card);
+      background: var(--card-glass);
+      backdrop-filter: blur(12px);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
+      border-radius: var(--radius);
+      padding: 24px;
       position: relative;
-      transition: border-color .2s, box-shadow .2s;
+      transition: transform .3s cubic-bezier(.16,1,.3,1), border-color .3s, box-shadow .4s;
+      animation: cardIn .6s cubic-bezier(.16,1,.3,1) both;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius);
+      opacity: 0;
+      transition: opacity .4s;
+      pointer-events: none;
     }
 
     .card:hover {
-      border-color: var(--border-hi);
-      box-shadow: 0 0 0 1px var(--border-hi), 0 8px 32px rgba(0,0,0,.4);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.5);
     }
 
-    .card-vuln:hover { border-color: rgba(248,113,113,.3); box-shadow: 0 0 0 1px rgba(248,113,113,.15), 0 8px 32px rgba(0,0,0,.4); }
-    .card-safe:hover { border-color: rgba(52,211,153,.3); box-shadow: 0 0 0 1px rgba(52,211,153,.15), 0 8px 32px rgba(0,0,0,.4); }
-    .card-info:hover { border-color: rgba(56,189,248,.3); box-shadow: 0 0 0 1px rgba(56,189,248,.15), 0 8px 32px rgba(0,0,0,.4); }
+    .card:hover::before { opacity: 1; }
+
+    .card-vuln::before { background: radial-gradient(ellipse at top, rgba(248,113,113,.06) 0%, transparent 60%); }
+    .card-vuln:hover   { border-color: rgba(248,113,113,.3); }
+
+    .card-safe::before { background: radial-gradient(ellipse at top, rgba(52,211,153,.06) 0%, transparent 60%); }
+    .card-safe:hover   { border-color: rgba(52,211,153,.3); }
+
+    .card-info::before { background: radial-gradient(ellipse at top, rgba(56,189,248,.06) 0%, transparent 60%); }
+    .card-info:hover   { border-color: rgba(56,189,248,.3); }
+
+    .card:nth-child(1) { animation-delay: .05s; }
+    .card:nth-child(2) { animation-delay: .1s; }
+    .card:nth-child(3) { animation-delay: .15s; }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(20px) scale(.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
 
     .card-header {
       display: flex;
@@ -177,270 +260,409 @@
     }
 
     .card-title {
-      font-size: 0.92rem;
-      font-weight: 600;
-      color: #e2ecf5;
+      font-size: .95rem;
+      font-weight: 700;
+      color: #eaf2fb;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
 
     .card-icon {
-      font-size: 1rem;
-      width: 28px; height: 28px;
+      width: 34px; height: 34px;
       display: flex; align-items: center; justify-content: center;
+      font-size: 1.05rem;
       background: rgba(255,255,255,.04);
-      border-radius: 7px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
       flex-shrink: 0;
     }
 
     /* ── Tags ── */
     .tag {
       font-family: var(--mono);
-      font-size: 0.65rem;
-      padding: 3px 9px;
-      border-radius: 6px;
+      font-size: .62rem;
+      padding: 4px 10px;
+      border-radius: 100px;
       font-weight: 700;
-      letter-spacing: .04em;
+      letter-spacing: .06em;
+      text-transform: uppercase;
       flex-shrink: 0;
     }
 
-    .tag-vuln  { background: rgba(248,113,113,.1); color: var(--red);    border: 1px solid rgba(248,113,113,.3); }
-    .tag-safe  { background: rgba(52,211,153,.1);  color: var(--green);  border: 1px solid rgba(52,211,153,.3); }
-    .tag-info  { background: rgba(56,189,248,.1);  color: var(--accent); border: 1px solid rgba(56,189,248,.3); }
+    .tag-vuln  { background: rgba(248,113,113,.1); color: var(--red);    border: 1px solid rgba(248,113,113,.25); }
+    .tag-safe  { background: rgba(52,211,153,.1);  color: var(--green);  border: 1px solid rgba(52,211,153,.25); }
+    .tag-info  { background: rgba(56,189,248,.08); color: var(--accent); border: 1px solid rgba(56,189,248,.2); }
+
+    .attack-num {
+      font-family: var(--mono);
+      font-size: .6rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(248,113,113,.1);
+      color: var(--red);
+      border: 1px solid rgba(248,113,113,.2);
+      letter-spacing: .06em;
+    }
 
     /* ── Explanation ── */
     .explanation {
-      font-size: 0.8rem;
+      font-size: .82rem;
       color: var(--muted);
-      line-height: 1.65;
-      margin-bottom: 14px;
-      padding: 10px 12px;
-      background: rgba(0,0,0,.25);
+      line-height: 1.7;
+      margin-bottom: 16px;
+      padding: 10px 14px;
+      background: rgba(0,0,0,.2);
       border-left: 2px solid var(--border-hi);
-      border-radius: 0 6px 6px 0;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     }
 
     code {
       font-family: var(--mono);
-      font-size: 0.82em;
+      font-size: .82em;
       background: rgba(56,189,248,.08);
       color: var(--accent);
-      padding: 1px 5px;
-      border-radius: 4px;
+      padding: 2px 6px;
+      border-radius: 5px;
     }
 
     /* ── Inputs ── */
-    .field { margin-bottom: 8px; }
+    .field { margin-bottom: 10px; }
 
     .field-label {
-      font-size: 0.72rem;
+      font-size: .7rem;
       color: var(--muted);
-      margin-bottom: 4px;
+      margin-bottom: 5px;
       font-family: var(--mono);
+      letter-spacing: .04em;
     }
 
     input[type="text"], input[type="password"], select {
       width: 100%;
-      padding: 9px 12px;
-      background: var(--surface);
+      padding: 10px 14px;
+      background: rgba(0,0,0,.3);
       border: 1px solid var(--border);
-      border-radius: 7px;
+      border-radius: var(--radius-sm);
       color: var(--text);
-      font-size: 0.83rem;
+      font-size: .85rem;
       font-family: var(--sans);
       outline: none;
-      transition: border-color .15s, box-shadow .15s;
+      transition: border-color .25s, box-shadow .25s, background .25s;
     }
 
     input:focus, select:focus {
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(56,189,248,.12);
+      box-shadow: 0 0 0 3px rgba(56,189,248,.1), 0 0 20px rgba(56,189,248,.05);
+      background: rgba(0,0,0,.4);
     }
 
     /* ── Buttons ── */
-    .btn-group { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .btn-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 
     button {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 8px 14px;
+      gap: 7px;
+      padding: 9px 16px;
       border: 1px solid transparent;
-      border-radius: 7px;
+      border-radius: var(--radius-sm);
       cursor: pointer;
-      font-size: 0.8rem;
+      font-size: .82rem;
       font-weight: 600;
       font-family: var(--sans);
-      transition: all .15s;
+      transition: all .25s cubic-bezier(.16,1,.3,1);
       white-space: nowrap;
+      position: relative;
+      overflow: hidden;
     }
 
-    button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.3); }
-    button:active:not(:disabled) { transform: translateY(0); }
-    button:disabled { opacity: .35; cursor: not-allowed; }
+    button::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity .3s;
+      pointer-events: none;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,.4);
+    }
+
+    button:hover:not(:disabled)::after { opacity: 1; }
+
+    button:active:not(:disabled) { transform: translateY(0) scale(.97); }
+    button:disabled { opacity: .3; cursor: not-allowed; }
 
     .btn-primary {
-      background: rgba(52,211,153,.12);
+      background: rgba(52,211,153,.1);
       color: var(--green);
-      border-color: rgba(52,211,153,.3);
+      border-color: rgba(52,211,153,.25);
     }
-    .btn-primary:hover:not(:disabled) { background: rgba(52,211,153,.2); }
+    .btn-primary::after { background: rgba(52,211,153,.06); }
+    .btn-primary:hover:not(:disabled) { box-shadow: 0 6px 24px rgba(52,211,153,.15); }
 
     .btn-danger {
-      background: rgba(248,113,113,.12);
+      background: rgba(248,113,113,.1);
       color: var(--red);
-      border-color: rgba(248,113,113,.3);
+      border-color: rgba(248,113,113,.25);
     }
-    .btn-danger:hover:not(:disabled) { background: rgba(248,113,113,.2); }
+    .btn-danger::after { background: rgba(248,113,113,.06); }
+    .btn-danger:hover:not(:disabled) { box-shadow: 0 6px 24px rgba(248,113,113,.15); }
 
     .btn-warning {
-      background: rgba(251,146,60,.12);
+      background: rgba(251,146,60,.1);
       color: var(--orange);
-      border-color: rgba(251,146,60,.3);
+      border-color: rgba(251,146,60,.25);
     }
-    .btn-warning:hover:not(:disabled) { background: rgba(251,146,60,.2); }
+    .btn-warning::after { background: rgba(251,146,60,.06); }
 
     .btn-info {
-      background: rgba(56,189,248,.1);
+      background: rgba(56,189,248,.08);
       color: var(--accent);
-      border-color: rgba(56,189,248,.3);
+      border-color: rgba(56,189,248,.2);
     }
-    .btn-info:hover:not(:disabled) { background: rgba(56,189,248,.18); }
+    .btn-info::after { background: rgba(56,189,248,.05); }
 
     .btn-purple {
-      background: rgba(167,139,250,.1);
+      background: rgba(167,139,250,.08);
       color: var(--purple);
-      border-color: rgba(167,139,250,.3);
+      border-color: rgba(167,139,250,.2);
     }
-    .btn-purple:hover:not(:disabled) { background: rgba(167,139,250,.18); }
+    .btn-purple::after { background: rgba(167,139,250,.05); }
+    .btn-purple:hover:not(:disabled) { box-shadow: 0 6px 24px rgba(167,139,250,.12); }
 
     /* ── Token display ── */
     .label {
       font-family: var(--mono);
-      font-size: 0.68rem;
+      font-size: .67rem;
       color: var(--muted);
-      letter-spacing: .04em;
-      margin-bottom: 5px;
+      letter-spacing: .06em;
+      margin-bottom: 6px;
       text-transform: uppercase;
     }
 
     .token-display {
       font-family: var(--mono);
-      font-size: 0.7rem;
-      background: var(--surface);
+      font-size: .7rem;
+      background: rgba(0,0,0,.3);
       border: 1px solid var(--border);
-      border-radius: 7px;
-      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
       word-break: break-all;
-      margin: 6px 0 10px;
-      min-height: 36px;
-      line-height: 1.7;
+      margin: 6px 0 12px;
+      min-height: 38px;
+      line-height: 1.8;
+      transition: border-color .3s;
     }
 
-    .jwt-part-header  { color: #f87171; }
-    .jwt-part-payload { color: #a78bfa; }
+    .jwt-part-header  { color: var(--red); }
+    .jwt-part-payload { color: var(--purple); }
     .jwt-part-sig     { color: var(--accent); }
-    .jwt-dot          { color: var(--muted); }
+    .jwt-dot          { color: var(--muted); opacity: .6; }
 
     .token-placeholder { color: var(--border-hi); font-style: italic; }
 
     /* ── Output ── */
     .output {
       font-family: var(--mono);
-      font-size: 0.76rem;
-      background: var(--surface);
+      font-size: .76rem;
+      background: rgba(0,0,0,.25);
       border: 1px solid var(--border);
-      border-radius: 7px;
-      padding: 11px 13px;
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
       white-space: pre-wrap;
       word-break: break-all;
       min-height: 64px;
-      max-height: 220px;
+      max-height: 240px;
       overflow-y: auto;
       color: var(--muted);
-      line-height: 1.65;
-      transition: border-color .2s, color .2s;
+      line-height: 1.7;
+      transition: all .4s cubic-bezier(.16,1,.3,1);
     }
 
-    .output.success { border-color: rgba(52,211,153,.4); color: var(--green); background: rgba(52,211,153,.04); }
-    .output.error   { border-color: rgba(248,113,113,.4); color: var(--red);   background: rgba(248,113,113,.04); }
-    .output.warning { border-color: rgba(251,191,36,.4);  color: var(--yellow); background: rgba(251,191,36,.04); }
-    .output.loading { border-color: rgba(56,189,248,.3);  color: var(--accent); }
+    .output.success {
+      border-color: rgba(52,211,153,.35);
+      color: var(--green);
+      background: rgba(52,211,153,.04);
+      box-shadow: 0 0 30px rgba(52,211,153,.05);
+    }
+
+    .output.error {
+      border-color: rgba(248,113,113,.35);
+      color: var(--red);
+      background: rgba(248,113,113,.04);
+      box-shadow: 0 0 30px rgba(248,113,113,.05);
+    }
+
+    .output.warning {
+      border-color: rgba(251,191,36,.35);
+      color: var(--yellow);
+      background: rgba(251,191,36,.04);
+      box-shadow: 0 0 30px rgba(251,191,36,.05);
+    }
+
+    .output.loading {
+      border-color: rgba(56,189,248,.25);
+      color: var(--accent);
+    }
 
     /* ── Divider ── */
-    .divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
 
-    /* ── Full width ── */
     .full-width { grid-column: 1 / -1; }
-
-    /* ── Attack number badge ── */
-    .attack-num {
-      font-family: var(--mono);
-      font-size: 0.6rem;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 4px;
-      background: rgba(248,113,113,.15);
-      color: var(--red);
-      border: 1px solid rgba(248,113,113,.3);
-      letter-spacing: .06em;
-    }
 
     /* ── Spinner ── */
     .spinner {
       display: inline-block;
-      width: 11px; height: 11px;
-      border: 2px solid rgba(56,189,248,.2);
+      width: 12px; height: 12px;
+      border: 2px solid rgba(56,189,248,.15);
       border-top-color: var(--accent);
       border-radius: 50%;
-      animation: spin .6s linear infinite;
+      animation: spin .7s linear infinite;
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Note box ── */
+    /* ── Note ── */
     .note {
-      font-size: 0.77rem;
+      font-size: .78rem;
       color: var(--muted);
       background: rgba(0,0,0,.2);
       border: 1px solid var(--border);
-      border-radius: 7px;
-      padding: 9px 12px;
-      margin-top: 10px;
-      line-height: 1.6;
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      margin-top: 12px;
+      line-height: 1.65;
     }
+
+    /* ── Status bar ── */
+    .status-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0; right: 0;
+      background: rgba(10,17,32,.9);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      padding: 8px 20px;
+      font-family: var(--mono);
+      font-size: .68rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+      transition: transform .3s;
+    }
+
+    .status-bar .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    .status-dot.online  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-dot.offline { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+
+    /* ── Ripple effect ── */
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,.08);
+      transform: scale(0);
+      animation: ripple-anim .6s ease-out;
+      pointer-events: none;
+    }
+
+    @keyframes ripple-anim {
+      to { transform: scale(4); opacity: 0; }
+    }
+
+    /* ── Toast ── */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      font-family: var(--mono);
+      font-size: .78rem;
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      background: var(--card-glass);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      color: var(--text);
+      animation: toastIn .4s cubic-bezier(.16,1,.3,1), toastOut .4s .9s cubic-bezier(.7,0,.84,0) forwards;
+      max-width: 340px;
+    }
+
+    .toast.toast-success { border-color: rgba(52,211,153,.4); color: var(--green); }
+    .toast.toast-error   { border-color: rgba(248,113,113,.4); color: var(--red); }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(40px) scale(.95); }
+      to   { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateX(0); }
+      to   { opacity: 0; transform: translateX(40px); }
+    }
+
+    /* ── Smooth reveal on scroll ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity .5s cubic-bezier(.16,1,.3,1), transform .5s cubic-bezier(.16,1,.3,1);
+    }
+
+    .reveal.visible { opacity: 1; transform: translateY(0); }
   </style>
 </head>
 <body>
 
-<!-- ── Hero ── -->
+<div class="bg-grid"></div>
+<div class="bg-glow bg-glow-1"></div>
+<div class="bg-glow bg-glow-2"></div>
+<div class="bg-glow bg-glow-3"></div>
+
+<div class="toast-container" id="toast-container"></div>
+
 <header class="hero">
   <div class="hero-inner">
-    <div class="hero-badge">LIVE DEMO · M2 ESGI Grenoble</div>
-    <h1>TP PoC — <span>Vulnérabilités JWT</span></h1>
-    <p class="subtitle">
-      Démonstration interactive des 3 vulnérabilités classiques des JSON Web Tokens
-      <span class="subtitle-chip">🔐 alg:none</span>
-      <span class="subtitle-chip">🔀 RS256/HS256</span>
-      <span class="subtitle-chip">🔨 Brute-force</span>
-    </p>
+    <div class="hero-badge"><span class="dot"></span> Live Demo</div>
+    <h1>Vulnérabilités <span class="gradient">JWT</span></h1>
+    <p class="subtitle">Démonstration interactive des 3 vulnérabilités classiques des JSON Web Tokens</p>
+    <div class="hero-chips">
+      <span class="hero-chip">alg:none</span>
+      <span class="hero-chip">RS256 / HS256</span>
+      <span class="hero-chip">Brute-force</span>
+    </div>
   </div>
 </header>
 
 <div class="wrapper">
 
-  <!-- ── Row 1 : Auth + API ── -->
-  <p class="section-label">// Setup</p>
+  <p class="section-title reveal">Setup</p>
   <div class="grid">
 
-    <div class="card card-info">
+    <div class="card card-info reveal">
       <div class="card-header">
         <div class="card-title">
-          <span class="card-icon">🔑</span>
+          <span class="card-icon">&#x1f511;</span>
           Authentification
         </div>
-        <span class="tag tag-info">Étape 1</span>
+        <span class="tag tag-info">Step 1</span>
       </div>
       <p class="explanation">
         Obtenez un token JWT légitime. Le serveur vulnérable signe les tokens HS256
@@ -455,19 +677,19 @@
         <input type="password" id="login-pass" value="password123" placeholder="Mot de passe">
       </div>
       <div class="btn-group">
-        <button class="btn-primary" onclick="doLogin()">▶ Connexion HS256</button>
-        <button class="btn-purple" onclick="doLoginRS256()">▶ Connexion RS256</button>
+        <button class="btn-primary" onclick="doLogin(this)">Connexion HS256</button>
+        <button class="btn-purple" onclick="doLoginRS256(this)">Connexion RS256</button>
       </div>
-      <div class="label">Token JWT reçu</div>
-      <div class="token-display" id="token-display"><span class="token-placeholder">— aucun token —</span></div>
-      <div class="label">Décodage</div>
-      <div class="output" id="token-decoded">—</div>
+      <div class="label">Token JWT</div>
+      <div class="token-display" id="token-display"><span class="token-placeholder">aucun token</span></div>
+      <div class="label">Payload décodé</div>
+      <div class="output" id="token-decoded">--</div>
     </div>
 
-    <div class="card card-info">
+    <div class="card card-info reveal">
       <div class="card-header">
         <div class="card-title">
-          <span class="card-icon">🌐</span>
+          <span class="card-icon">&#x1f310;</span>
           Endpoints API
         </div>
         <span class="tag tag-info">Tests</span>
@@ -476,31 +698,30 @@
         Testez les différents niveaux d'accès avec votre token courant.
       </p>
       <div class="btn-group">
-        <button class="btn-primary" onclick="callApi('/api/public', false)">GET /api/public</button>
-        <button class="btn-info"    onclick="callApi('/api/user')">GET /api/user</button>
-        <button class="btn-warning" onclick="callApi('/api/admin')">GET /api/admin</button>
-        <button class="btn-purple"  onclick="callApi('/api/secret-rs256')">GET /api/secret-rs256</button>
+        <button class="btn-primary" onclick="callApi('/api/public', false, this)">GET /api/public</button>
+        <button class="btn-info"    onclick="callApi('/api/user', true, this)">GET /api/user</button>
+        <button class="btn-warning" onclick="callApi('/api/admin', true, this)">GET /api/admin</button>
+        <button class="btn-purple"  onclick="callApi('/api/secret-rs256', true, this)">GET /api/secret-rs256</button>
       </div>
       <hr class="divider">
       <div class="label">Réponse</div>
-      <div class="output" id="api-output">—</div>
+      <div class="output" id="api-output">--</div>
     </div>
 
   </div>
 
-  <!-- ── Row 2 : Attacks ── -->
-  <p class="section-label" style="margin-top:8px">// Attaques</p>
+  <p class="section-title reveal">Attaques</p>
   <div class="grid">
 
-    <div class="card card-vuln">
+    <div class="card card-vuln reveal">
       <div class="card-header">
         <div class="card-title">
-          <span class="card-icon">⚠️</span>
+          <span class="card-icon">&#x26a0;&#xfe0f;</span>
           alg:none bypass
         </div>
         <div style="display:flex;gap:6px;align-items:center">
-          <span class="attack-num">VULN 1</span>
-          <span class="tag tag-vuln">CRITIQUE</span>
+          <span class="attack-num">01</span>
+          <span class="tag tag-vuln">Critique</span>
         </div>
       </div>
       <p class="explanation">
@@ -509,23 +730,23 @@
         n'importe quel rôle.
       </p>
       <div class="btn-group">
-        <button class="btn-danger" onclick="attackAlgNone()">🚀 Lancer l'attaque</button>
+        <button class="btn-danger" onclick="attackAlgNone(this)">Lancer l'attaque</button>
       </div>
       <div class="label">Token forgé</div>
-      <div class="token-display" id="forged-token-1"><span class="token-placeholder">—</span></div>
+      <div class="token-display" id="forged-token-1"><span class="token-placeholder">--</span></div>
       <div class="label">Résultat</div>
-      <div class="output" id="attack1-output">—</div>
+      <div class="output" id="attack1-output">--</div>
     </div>
 
-    <div class="card card-vuln">
+    <div class="card card-vuln reveal">
       <div class="card-header">
         <div class="card-title">
-          <span class="card-icon">🔀</span>
+          <span class="card-icon">&#x1f500;</span>
           Confusion RS256 / HS256
         </div>
         <div style="display:flex;gap:6px;align-items:center">
-          <span class="attack-num">VULN 2</span>
-          <span class="tag tag-vuln">CRITIQUE</span>
+          <span class="attack-num">02</span>
+          <span class="tag tag-vuln">Critique</span>
         </div>
       </div>
       <p class="explanation">
@@ -534,23 +755,23 @@
         l'algorithme attendu.
       </p>
       <div class="btn-group">
-        <button class="btn-danger" onclick="attackConfusion()">🚀 Lancer l'attaque</button>
+        <button class="btn-danger" onclick="attackConfusion(this)">Lancer l'attaque</button>
       </div>
       <div class="label">Token forgé (HS256 signé avec clé publique RSA)</div>
-      <div class="token-display" id="forged-token-2"><span class="token-placeholder">—</span></div>
+      <div class="token-display" id="forged-token-2"><span class="token-placeholder">--</span></div>
       <div class="label">Résultat</div>
-      <div class="output" id="attack2-output">—</div>
+      <div class="output" id="attack2-output">--</div>
     </div>
 
-    <div class="card card-vuln full-width">
+    <div class="card card-vuln full-width reveal">
       <div class="card-header">
         <div class="card-title">
-          <span class="card-icon">🔨</span>
-          Force brute du secret HS256
+          <span class="card-icon">&#x1f528;</span>
+          Brute-force HS256
         </div>
         <div style="display:flex;gap:6px;align-items:center">
-          <span class="attack-num">VULN 3</span>
-          <span class="tag tag-vuln">HAUTE</span>
+          <span class="attack-num">03</span>
+          <span class="tag tag-vuln">Haute</span>
         </div>
       </div>
       <p class="explanation">
@@ -558,12 +779,12 @@
         vitesse élevée. Le secret <code>"secret"</code> est découvert via dictionnaire.
       </p>
       <div class="btn-group">
-        <button class="btn-danger" onclick="attackBruteForce()">🚀 Lancer le dictionnaire</button>
+        <button class="btn-danger" onclick="attackBruteForce(this)">Lancer le dictionnaire</button>
       </div>
-      <div class="label">Résultat (simulation dans le navigateur)</div>
-      <div class="output" id="attack3-output">—</div>
+      <div class="label">Résultat</div>
+      <div class="output" id="attack3-output">--</div>
       <div class="note">
-        💡 La vraie attaque offline avec Hashcat teste des milliards de mots/seconde.
+        La vraie attaque offline avec Hashcat teste des milliards de mots/sec.
         Lancez <code>node attacks/3_brute_force.js</code> pour la démo CLI complète.
       </div>
     </div>
@@ -571,8 +792,36 @@
   </div>
 </div>
 
+<div class="status-bar">
+  <span><span class="status-dot" id="status-dot"></span><span id="status-text">Vérification...</span></span>
+  <span>TP PoC JWT &mdash; M2 ESGI Grenoble</span>
+</div>
+
 <script>
 let currentToken = null;
+
+function toast(msg, type = '') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast' + (type ? ' toast-' + type : '');
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 1400);
+}
+
+function ripple(btn) {
+  const r = document.createElement('span');
+  r.className = 'ripple';
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  r.style.width = r.style.height = size + 'px';
+  r.style.left = '50%';
+  r.style.top = '50%';
+  r.style.marginLeft = -size/2 + 'px';
+  r.style.marginTop = -size/2 + 'px';
+  btn.appendChild(r);
+  setTimeout(() => r.remove(), 600);
+}
 
 function setOutput(id, text, cls = '') {
   const el = document.getElementById(id);
@@ -599,7 +848,7 @@ function decodeToken(token) {
 
 function renderJwtToken(el, token) {
   if (!token) {
-    el.innerHTML = '<span class="token-placeholder">— aucun token —</span>';
+    el.innerHTML = '<span class="token-placeholder">aucun token</span>';
     return;
   }
   const parts = token.split('.');
@@ -611,9 +860,7 @@ function renderJwtToken(el, token) {
 
 function updateTokenDisplay(token) {
   currentToken = token;
-  const el = document.getElementById('token-display');
-  renderJwtToken(el, token);
-
+  renderJwtToken(document.getElementById('token-display'), token);
   const decoded = decodeToken(token);
   if (decoded) {
     document.getElementById('token-decoded').textContent =
@@ -623,10 +870,11 @@ function updateTokenDisplay(token) {
   }
 }
 
-async function doLogin() {
+async function doLogin(btn) {
+  if (btn) ripple(btn);
   const username = document.getElementById('login-user').value;
   const password = document.getElementById('login-pass').value;
-  setOutput('token-decoded', 'Connexion…', 'loading');
+  setOutput('token-decoded', 'Connexion...', 'loading');
   try {
     const res  = await fetch('/auth/login', {
       method: 'POST',
@@ -634,17 +882,24 @@ async function doLogin() {
       body: JSON.stringify({ username, password }),
     });
     const data = await res.json();
-    if (data.token) updateTokenDisplay(data.token);
-    else setOutput('token-decoded', 'Erreur : ' + JSON.stringify(data), 'error');
+    if (data.token) {
+      updateTokenDisplay(data.token);
+      toast('Token HS256 obtenu', 'success');
+    } else {
+      setOutput('token-decoded', 'Erreur : ' + JSON.stringify(data), 'error');
+      toast('Identifiants incorrects', 'error');
+    }
   } catch (e) {
     setOutput('token-decoded', 'Erreur réseau : ' + e.message, 'error');
+    toast('Serveur injoignable', 'error');
   }
 }
 
-async function doLoginRS256() {
+async function doLoginRS256(btn) {
+  if (btn) ripple(btn);
   const username = document.getElementById('login-user').value;
   const password = document.getElementById('login-pass').value;
-  setOutput('token-decoded', 'Connexion RS256…', 'loading');
+  setOutput('token-decoded', 'Connexion RS256...', 'loading');
   try {
     const res  = await fetch('/auth/login-rs256', {
       method: 'POST',
@@ -652,18 +907,25 @@ async function doLoginRS256() {
       body: JSON.stringify({ username, password }),
     });
     const data = await res.json();
-    if (data.token) updateTokenDisplay(data.token);
-    else setOutput('token-decoded', 'Erreur : ' + JSON.stringify(data), 'error');
+    if (data.token) {
+      updateTokenDisplay(data.token);
+      toast('Token RS256 obtenu', 'success');
+    } else {
+      setOutput('token-decoded', 'Erreur : ' + JSON.stringify(data), 'error');
+      toast('Identifiants incorrects', 'error');
+    }
   } catch (e) {
     setOutput('token-decoded', 'Erreur réseau : ' + e.message, 'error');
+    toast('Serveur injoignable', 'error');
   }
 }
 
-async function callApi(url, withToken = true) {
+async function callApi(url, withToken, btn) {
+  if (btn) ripple(btn);
   const headers = withToken && currentToken
     ? { Authorization: 'Bearer ' + currentToken }
     : {};
-  setOutput('api-output', 'Requête en cours…', 'loading');
+  setOutput('api-output', 'Requête en cours...', 'loading');
   try {
     const res  = await fetch(url, { headers });
     const data = await res.json();
@@ -673,9 +935,11 @@ async function callApi(url, withToken = true) {
   }
 }
 
-async function attackAlgNone() {
+async function attackAlgNone(btn) {
+  if (btn) ripple(btn);
   if (!currentToken) {
     setOutput('attack1-output', 'Connectez-vous d\'abord pour obtenir un token.', 'error');
+    toast('Token requis', 'error');
     return;
   }
 
@@ -687,15 +951,16 @@ async function attackAlgNone() {
   const forged   = fHeader + '.' + fPayload + '.';
 
   renderJwtToken(document.getElementById('forged-token-1'), forged);
-  setOutput('attack1-output', 'Envoi du token forgé…', 'loading');
+  setOutput('attack1-output', 'Envoi du token forgé...', 'loading');
 
   try {
     const res  = await fetch('/api/admin', { headers: { Authorization: 'Bearer ' + forged } });
     const data = await res.json();
     if (res.ok) {
-      setOutput('attack1-output', '✅ ATTAQUE RÉUSSIE !\n\n' + JSON.stringify(data, null, 2), 'warning');
+      setOutput('attack1-output', 'ATTAQUE RÉUSSIE — accès admin obtenu !\n\n' + JSON.stringify(data, null, 2), 'warning');
+      toast('alg:none exploité !', 'success');
     } else {
-      setOutput('attack1-output', '❌ Attaque échouée (serveur durci)\n\n' + JSON.stringify(data, null, 2), 'success');
+      setOutput('attack1-output', 'Attaque échouée (serveur durci)\n\n' + JSON.stringify(data, null, 2), 'success');
     }
   } catch (e) {
     setOutput('attack1-output', 'Erreur : ' + e.message, 'error');
@@ -712,12 +977,14 @@ async function hmacSHA256(key, data) {
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-async function attackConfusion() {
-  setOutput('attack2-output', 'Récupération de la clé publique RSA…', 'loading');
+async function attackConfusion(btn) {
+  if (btn) ripple(btn);
+  setOutput('attack2-output', 'Récupération de la clé publique RSA...', 'loading');
   try {
     const keyRes = await fetch('/api/public-key');
     if (!keyRes.ok) {
       setOutput('attack2-output', 'Clés RSA non disponibles. Lancez : node generate-keys.js', 'error');
+      toast('Clés RSA manquantes', 'error');
       return;
     }
     const pubKey = await keyRes.text();
@@ -728,28 +995,30 @@ async function attackConfusion() {
     const sig      = await hmacSHA256(pubKey, input);
     const forged   = input + '.' + sig;
 
-    const el = document.getElementById('forged-token-2');
-    renderJwtToken(el, forged.substring(0, 120) + '…');
+    renderJwtToken(document.getElementById('forged-token-2'), forged.substring(0, 120) + '...');
 
     const res  = await fetch('/api/secret-rs256', { headers: { Authorization: 'Bearer ' + forged } });
     const data = await res.json();
 
     if (res.ok) {
       setOutput('attack2-output',
-        '✅ ATTAQUE RÉUSSIE — clé publique RSA utilisée comme secret HMAC !\n\n' +
+        'ATTAQUE RÉUSSIE — clé publique utilisée comme secret HMAC !\n\n' +
         JSON.stringify(data, null, 2), 'warning');
+      toast('Confusion RS256/HS256 exploitée !', 'success');
     } else {
       setOutput('attack2-output',
-        '❌ Attaque échouée (serveur durci)\n\n' + JSON.stringify(data, null, 2), 'success');
+        'Attaque échouée (serveur durci)\n\n' + JSON.stringify(data, null, 2), 'success');
     }
   } catch (e) {
     setOutput('attack2-output', 'Erreur : ' + e.message, 'error');
   }
 }
 
-async function attackBruteForce() {
+async function attackBruteForce(btn) {
+  if (btn) ripple(btn);
   if (!currentToken) {
     setOutput('attack3-output', 'Connectez-vous d\'abord pour obtenir un token HS256.', 'error');
+    toast('Token requis', 'error');
     return;
   }
 
@@ -766,7 +1035,7 @@ async function attackBruteForce() {
   const input = h + '.' + p;
   const enc   = new TextEncoder();
 
-  setOutput('attack3-output', 'Démarrage de la force brute…\n', 'loading');
+  setOutput('attack3-output', 'Démarrage de la force brute...\n', 'loading');
 
   let found  = null;
   let tested = 0;
@@ -788,13 +1057,14 @@ async function attackBruteForce() {
 
   if (found) {
     setOutput('attack3-output',
-      `✅ SECRET TROUVÉ : "${found}"\n` +
+      `SECRET TROUVÉ : "${found}"\n` +
       `   Mots testés   : ${tested} / ${WORDLIST.length}\n` +
       `   Durée          : ${elapsed}s\n\n` +
       `"${found}" est présent dans rockyou.txt.\n` +
       `Avec Hashcat (GPU), ~14M mots seraient testés en < 1 seconde.`,
       'warning'
     );
+    toast(`Secret trouvé : "${found}"`, 'success');
   } else {
     setOutput('attack3-output',
       `Secret non trouvé (${tested} mots testés en ${elapsed}s).\n` +
@@ -803,6 +1073,35 @@ async function attackBruteForce() {
     );
   }
 }
+
+async function checkServer() {
+  const dot  = document.getElementById('status-dot');
+  const text = document.getElementById('status-text');
+  try {
+    const res = await fetch('/api/public');
+    if (res.ok) {
+      dot.className = 'status-dot online';
+      text.textContent = 'Serveur connecté — localhost:3000';
+    } else throw new Error();
+  } catch {
+    dot.className = 'status-dot offline';
+    text.textContent = 'Serveur hors-ligne — node server.js';
+  }
+}
+
+checkServer();
+setInterval(checkServer, 5000);
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 </script>
 </body>
 </html>
