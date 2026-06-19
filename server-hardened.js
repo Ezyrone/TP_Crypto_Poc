@@ -65,8 +65,11 @@ function verifyHS256Hardened(token) {
   const expected = crypto
     .createHmac('sha256', secret)
     .update(`${parts[0]}.${parts[1]}`)
-    .digest('base64url');
-  if (expected !== sig) throw new Error('Signature invalide');
+    .digest();
+  const sigBuf = Buffer.from(sig, 'base64url');
+  if (expected.length !== sigBuf.length || !crypto.timingSafeEqual(expected, sigBuf)) {
+    throw new Error('Signature invalide');
+  }
 
   const now = Math.floor(Date.now() / 1000);
   if (payload.exp && payload.exp < now) throw new Error('Token expiré');

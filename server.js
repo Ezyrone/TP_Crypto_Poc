@@ -77,6 +77,16 @@ function verifyVulnerable(token) {
     return payload;
   }
 
+  if (header.alg === 'RS256') {
+    if (!RSA_PUBLIC_KEY) throw new Error('Clés RSA non disponibles');
+    const verifier = crypto.createVerify('RSA-SHA256');
+    verifier.update(`${parts[0]}.${parts[1]}`);
+    if (!verifier.verify(RSA_PUBLIC_KEY, sig, 'base64url')) {
+      throw new Error('Signature RS256 invalide');
+    }
+    return payload;
+  }
+
   throw new Error(`Algorithme non géré : ${header.alg}`);
 }
 
