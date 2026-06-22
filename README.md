@@ -1,43 +1,41 @@
 # TP PoC — Sujet 12 : Vulnérabilités JWT
 
-**Étudiant :** Jory GRZESZCZAK  
-**Formation :** M2 AL — ESGI Grenoble  
-**Sujet :** 12 — Analyse et exploitation d'une mauvaise gestion des JWT
+**Jory GRZESZCZAK** — M2 AL, ESGI Grenoble
 
 ---
 
-## Présentation
+## Le projet en quelques mots
 
-Ce projet est une preuve de concept illustrant trois vulnérabilités classiques des JSON Web Tokens. Les JWT sont aujourd'hui très répandus dans les architectures d'authentification, mais une implémentation incorrecte peut les rendre entièrement contournables. Les trois vulnérabilités couvertes sont :
+L'idée de ce TP c'est de montrer concrètement comment des JWT mal implémentés peuvent être exploités. J'ai monté un petit serveur Flask volontairement vulnérable, avec trois scripts d'attaque qui viennent taper dessus pour prouver que ça marche. Et à côté, un serveur durci qui montre comment corriger chaque faille.
 
-- **alg:none** — suppression de la signature, le serveur accepte le token sans vérification
-- **Confusion RS256/HS256** — utilisation de la clé publique du serveur comme secret HMAC pour forger un token valide
-- **Secret HS256 faible** — récupération du secret par attaque dictionnaire, entièrement offline
+Les trois vulnérabilités que je traite :
 
-Chaque vulnérabilité est accompagnée d'un script d'attaque autonome et d'une explication dans ce rapport.
+- **alg:none** — on vire la signature du token et le serveur l'accepte quand même
+- **Confusion RS256/HS256** — on signe un token avec la clé publique du serveur comme secret HMAC, et il passe
+- **Brute force du secret HS256** — le secret est trop faible, on le retrouve par dictionnaire sans même toucher au serveur
 
 ---
 
-## Installation
+## Setup
 
-**Prérequis :** Node.js 18 ou supérieur.
+Il faut Python 3.10+ et pip.
 
 ```bash
-npm install
-node generate-keys.js   # génère la paire de clés RSA (nécessaire pour la vulnérabilité 2)
+pip install -r requirements.txt
+python generate_keys.py
 ```
+
+La deuxième commande génère la paire RSA dans `keys/`. C'est nécessaire pour l'attaque 2.
 
 ---
 
-## Utilisation
-
-### Lancer le serveur vulnérable
+## Lancer le serveur vulnérable
 
 ```bash
-node server.js
+python server.py
 ```
 
-Le serveur démarre sur `http://localhost:3000`. Une interface web est accessible à cette adresse pour tester les attaques depuis un navigateur, mais les scripts CLI sont plus complets et plus lisibles.
+Ça tourne sur `http://localhost:3000`. Il y a une interface web accessible directement dans le navigateur pour tester les attaques à la main, mais les scripts CLI sont plus complets.
 
 **Comptes de test :**
 
@@ -46,136 +44,133 @@ Le serveur démarre sur `http://localhost:3000`. Une interface web est accessibl
 | `alice` | `password123` | user |
 | `admin` | `admin123` | admin |
 
-**Endpoints disponibles :**
+**Endpoints :**
 
 | Route | Description |
 |-------|-------------|
-| `POST /auth/login` | Connexion → token HS256 (secret : `"secret"`) |
-| `POST /auth/login-rs256` | Connexion → token RS256 |
-| `GET /api/public` | Accessible sans authentification |
-| `GET /api/user` | Authentification requise |
-| `GET /api/admin` | Rôle admin requis — **vulnérable à alg:none** |
-| `GET /api/public-key` | Clé publique RSA exposée |
-| `GET /api/secret-rs256` | RS256 requis — **vulnérable à la confusion d'algorithme** |
+| `POST /auth/login` | Connexion, renvoie un token HS256 (secret : `"secret"`) |
+| `POST /auth/login-rs256` | Connexion, renvoie un token RS256 |
+| `GET /api/public` | Pas besoin de token |
+| `GET /api/user` | Faut être authentifié |
+| `GET /api/admin` | Faut être admin — **vulnérable à alg:none** |
+| `GET /api/public-key` | Renvoie la clé publique RSA |
+| `GET /api/secret-rs256` | Vérifie en RS256 — **vulnérable à la confusion d'algo** |
 
 ---
 
-## Démonstration des attaques
+## Les attaques
 
 ### Attaque 1 — alg:none
 
 ```bash
-node attacks/1_alg_none.js
+python attacks/1_alg_none.py
 ```
 
-Le script se connecte avec le compte `alice` (rôle : user), récupère le token, puis le modifie : le header passe à `"alg":"none"`, le payload est modifié pour indiquer `"role":"admin"`, et la signature est supprimée. Le serveur vulnérable, qui fait confiance au champ `alg` du header sans le valider, accepte ce token et accorde l'accès à `/api/admin`.
+Le script se connecte en tant qu'alice (user), récupère son token, puis le modifie : il met `"alg":"none"` dans le header et `"role":"admin"` dans le payload, et supprime la signature. Le serveur vulnérable lit l'algo depuis le header sans vérifier que c'est un algo autorisé, donc il accepte le token tel quel.
 
-### Attaque 2 — Confusion RS256/HS256
+### Attaque 2 — Confusion RS256 / HS256
 
 ```bash
-node attacks/2_rs256_hs256.js
+python attacks/2_rs256_hs256.py
 ```
 
-Le script récupère la clé publique RSA exposée par `/api/public-key`, puis forge un token HS256 en utilisant cette clé comme secret HMAC. Le serveur vulnérable, qui ne fixe pas l'algorithme attendu lors de la vérification, accepte ce token sur l'endpoint `/api/secret-rs256` qui devrait pourtant n'accepter que du RS256.
+Le script va chercher la clé publique RSA sur `/api/public-key` (elle est exposée, c'est normal en soi), puis s'en sert comme secret HMAC pour signer un token HS256 avec `role: admin`. Le serveur qui ne force pas l'algorithme RS256 sur cet endpoint accepte le token parce que la "vérification" HMAC passe — la clé publique est la même des deux côtés.
 
-### Attaque 3 — Force brute du secret HS256
+### Attaque 3 — Brute force HS256
 
 ```bash
-node attacks/3_brute_force.js
+python attacks/3_brute_force.py
 
-# Avec rockyou.txt :
-node attacks/3_brute_force.js --wordlist /usr/share/wordlists/rockyou.txt
+# Avec un dictionnaire perso :
+python attacks/3_brute_force.py --wordlist /chemin/vers/rockyou.txt
 ```
 
-Le script récupère un token valide via une connexion normale, puis teste des secrets candidats en recalculant le HMAC à chaque itération — sans aucun appel réseau. Le secret `"secret"` est retrouvé en 19 essais. La différence de vitesse avec bcrypt est significative : HMAC-SHA256 permet environ 500 millions de tentatives par seconde sur GPU, contre environ 20 000 pour bcrypt. Cela illustre pourquoi un secret faible est une vulnérabilité critique.
+On récupère un token valide via un login normal, puis on essaie des secrets candidats en recalculant le HMAC-SHA256 à chaque fois. Aucun appel réseau nécessaire, c'est purement offline. Le secret `"secret"` tombe en 19 essais avec le dictionnaire intégré. Avec hashcat sur GPU, on peut tester environ 500 millions de candidats par seconde, ce qui rend n'importe quel secret "humain" vulnérable.
 
 ---
 
-## Serveur durci — Partie 3
+## Serveur durci
 
 ```bash
-node server-hardened.js   # port 3001
+python server_hardened.py   # port 3001
 ```
 
-Ce fichier constitue la version corrigée du serveur. Les modifications apportées :
+C'est la version corrigée. Ce qui change :
 
-- Whitelist d'algorithmes explicite : seul `HS256` est accepté, `alg:none` est rejeté
-- Secret généré aléatoirement au démarrage (256 bits)
-- Expiration des tokens à 15 minutes (`exp` claim)
-- Liste noire de tokens révoqués (logout)
-- Support du champ `kid` pour la rotation de clés sans interruption de service
-
-> Ce fichier constitue la version production-ready du serveur, corrigeant toutes les vulnérabilités démontrées.
+- Seul `HS256` est accepté, `alg:none` est rejeté directement
+- Le secret est généré aléatoirement au démarrage (256 bits, pas un mot du dico)
+- Les tokens expirent au bout de 15 minutes
+- Il y a une blacklist pour révoquer des tokens (endpoint `/auth/logout`)
+- Support du champ `kid` dans le header pour pouvoir faire de la rotation de clés
 
 ---
 
-## Rapport
+## Comment un JWT fonctionne
 
-### Structure d'un JWT et flux d'authentification
-
-Un JWT est composé de trois parties encodées en Base64url, séparées par des points :
+Un JWT c'est trois parties séparées par des points :
 
 ```
 base64url(header) . base64url(payload) . signature
 ```
 
-Le header indique l'algorithme de signature utilisé. Le payload contient les claims : identifiant utilisateur, rôle, date d'émission (`iat`), date d'expiration (`exp`). La signature garantit l'intégrité des deux premières parties.
+Le header dit quel algo de signature est utilisé. Le payload contient les infos utiles (username, role, date d'expiration...). La signature garantit que personne n'a modifié les deux premières parties.
 
-Un point souvent mal compris : le payload n'est pas chiffré, seulement encodé. N'importe qui peut le décoder et lire son contenu. La sécurité repose entièrement sur la signature, pas sur la confidentialité du payload.
+Un truc important : le payload n'est pas chiffré, juste encodé en base64. N'importe qui peut le lire. La sécurité repose uniquement sur la signature.
 
-**Flux d'authentification standard :**
-1. Le client envoie ses identifiants via `POST /auth/login`
-2. Le serveur les vérifie et retourne un JWT signé
-3. Le client stocke le token et l'envoie dans le header `Authorization: Bearer <token>` à chaque requête protégée
-4. Le serveur vérifie la signature et les claims — sans stocker quoi que ce soit côté serveur, ce qui rend JWT stateless
-
----
-
-### Analyse des vulnérabilités
-
-**alg:none** — La RFC 7518 définit `"none"` comme un algorithme valide pour les contextes où la signature est inutile. Certaines bibliothèques l'ont implémenté, et un serveur qui lit l'algorithme depuis le header sans le comparer à une whitelist accepte des tokens non signés. La CVE-2015-9235 (jsonwebtoken < 4.2.2) illustre un cas réel. La correction tient en un paramètre : `{ algorithms: ['HS256'] }`.
-
-**Confusion RS256/HS256** — RS256 repose sur une paire de clés asymétrique : signature avec la clé privée, vérification avec la clé publique. Lorsqu'un développeur appelle `jwt.verify(token, publicKeyPEM)` sans préciser l'algorithme, certaines bibliothèques JWT lisent le champ `alg` du header pour décider comment interpréter la clé. Si ce header indique `HS256`, la string PEM est utilisée comme secret HMAC. La clé publique étant publique par définition, l'attaquant peut reproduire exactement la même signature. La correction consiste à utiliser des vérificateurs distincts avec un algorithme explicitement imposé par endpoint.
-
-**Secret HS256 faible** — HMAC-SHA256 est conçu pour être rapide, ce qui est une qualité pour la performance mais un problème pour la résistance aux attaques. L'attaque est entièrement offline : à partir d'un seul token intercepté (obtenu via une connexion légitime), il est possible de tester des milliards de secrets candidats sans que le serveur ne soit sollicité ni alerté. Avec Hashcat sur GPU, la totalité de rockyou.txt (environ 14 millions de mots) est testée en moins d'une seconde. Un secret de 256 bits aléatoires rend cette attaque infaisable.
+Le flux classique c'est :
+1. Le client envoie ses identifiants
+2. Le serveur vérifie et renvoie un JWT signé
+3. Le client le stocke et l'envoie dans le header `Authorization: Bearer <token>` à chaque requête
+4. Le serveur vérifie la signature et les claims sans rien stocker côté serveur
 
 ---
 
-### HS256 vs RS256/ES256
+## Pourquoi ces failles existent
 
-HS256 repose sur un secret partagé : tout service capable de vérifier un token peut aussi en émettre un. Cette approche convient aux architectures monolithiques où un seul service gère les tokens de bout en bout.
+**alg:none** — La RFC 7518 définit `"none"` comme algo valide (pour les cas où la signature n'est pas nécessaire). Certaines bibliothèques l'implémentent, et si le serveur fait confiance au champ `alg` du header pour décider comment vérifier... il ne vérifie rien du tout. Ça a donné la CVE-2015-9235 sur jsonwebtoken < 4.2.2.
 
-RS256 et ES256 utilisent une paire de clés asymétrique. Seul le service d'authentification possède la clé privée et peut émettre des tokens. Les autres services vérifient avec la clé publique, sans pouvoir en créer. Cette séparation est essentielle en microservices : la compromission d'un service ne suffit pas à forger des tokens valides.
+**Confusion RS256/HS256** — En RS256, on signe avec la clé privée et on vérifie avec la publique. Si le serveur appelle `verify(token, cle_publique)` sans imposer l'algo, et que l'attaquant met `HS256` dans le header, la bibliothèque utilise la clé publique comme secret HMAC. Et comme la clé publique est publique par définition, l'attaquant peut reproduire la même signature.
 
-ES256 (ECDSA sur P-256) est généralement préférable à RS256 : signatures plus courtes, génération plus rapide, niveau de sécurité équivalent.
-
----
-
-### Recommandations OWASP
-
-D'après l'OWASP JWT Security Cheat Sheet et le Session Management Cheat Sheet :
-
-1. Fixer l'algorithme attendu côté serveur et ne jamais lire `alg` depuis le header pour décider quoi vérifier
-2. Utiliser un secret d'au moins 256 bits aléatoires, chargé depuis une variable d'environnement ou un secret manager
-3. Limiter la durée de vie des access tokens (15 minutes recommandé), avec un mécanisme de refresh séparé
-4. Ne jamais inclure de données sensibles dans le payload, celui-ci étant lisible par quiconque intercepte le token
-5. Stocker le token côté client dans un cookie `httpOnly` plutôt que dans `localStorage` (résistance aux attaques XSS)
-6. Implémenter un mécanisme de révocation : blacklist par `jti`, ou versionnement de secret par utilisateur
-7. Prévoir la rotation régulière des clés avec support du champ `kid` pour éviter toute interruption de service
+**Secret faible** — HMAC-SHA256 est rapide par design. C'est bien pour les perfs, mais ça veut dire qu'un attaquant peut tester des milliards de candidats. L'attaque est totalement offline : un seul token intercepté suffit. Pas besoin de toucher au serveur, pas de rate limiting possible.
 
 ---
 
-## Structure du projet
+## HS256 vs RS256 / ES256
+
+HS256 utilise un secret partagé : tout service qui peut vérifier un token peut aussi en créer. C'est ok pour une archi simple avec un seul serveur.
+
+RS256 et ES256 utilisent une paire de clés. Seul le service d'auth a la clé privée. Les autres services vérifient avec la clé publique sans pouvoir émettre de tokens. C'est ce qu'il faut en microservices.
+
+ES256 (ECDSA P-256) est généralement préférable à RS256 : signatures plus courtes, plus rapide, même niveau de sécurité.
+
+---
+
+## Recommandations OWASP
+
+D'après le JWT Security Cheat Sheet :
+
+1. Toujours fixer l'algorithme côté serveur, ne jamais se baser sur le header du token
+2. Secret d'au moins 256 bits aléatoires, stocké dans une variable d'env ou un secret manager
+3. Access tokens de courte durée (15 min), avec un mécanisme de refresh à part
+4. Rien de sensible dans le payload (c'est lisible par tout le monde)
+5. Stocker le token dans un cookie `httpOnly` plutôt que dans `localStorage` (protection XSS)
+6. Prévoir un mécanisme de révocation (blacklist par `jti` ou versionnement de secret)
+7. Rotation régulière des clés avec support du `kid`
+
+---
+
+## Arborescence
 
 ```
 .
-├── server.js              
-├── server-hardened.js     
-├── generate-keys.js       
+├── server.py
+├── server_hardened.py
+├── generate_keys.py
+├── requirements.txt
 ├── attacks/
-│   ├── 1_alg_none.js
-│   ├── 2_rs256_hs256.js
-│   └── 3_brute_force.js
+│   ├── 1_alg_none.py
+│   ├── 2_rs256_hs256.py
+│   └── 3_brute_force.py
 └── frontend/
-    └── index.html        
+    └── index.html
 ```
